@@ -1,5 +1,6 @@
 import argparse
-from dataclasses import dataclass
+import dataclasses
+import json
 import logging
 import os
 import re
@@ -11,10 +12,7 @@ logging.basicConfig(format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d:
 LOGGER = logging.getLogger()
 
 
-VIDEOFILE_JSON_FILENAME = 'video_info.json'
-
-
-@dataclass
+@dataclasses.dataclass
 class VideoFile:
     file_path: str
     scrubbed_file_name: str = ''
@@ -79,9 +77,11 @@ def main(argv):
     parser.add_argument('--folder', action='store', help='Path to folder to process')
     parser.add_argument('--ignore-extensions', action='store', default='png,jpg,nfo', help='File extensions to ignore (comma-separated list)')
     parser.add_argument('--filename-metadata-tokens', action='store', default='480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv', help='Filename metadata elements')
+    parser.add_argument('--save-file', action='store', default='video_info.json', help='Name of file used to save JSON data')
     args = parser.parse_args(argv)
 
     if args.folder:
+        LOGGER.info('Scanning folder %s', args.folder)
         video_files = scan_folder(args.folder, args.ignore_extensions, args.filename_metadata_tokens)
 
         for video_file in video_files:
@@ -93,6 +93,12 @@ def main(argv):
             match = re.match(r'.*\(?(\d{4})\)?', video_file.scrubbed_file_name)
             if not match:
                 LOGGER.info(f'{video_file.scrubbed_file_name} <-- {file_name} [{file_path}]')
+
+        LOGGER.info('Saving results %s', args.file_name)
+        with open(args.file_name, 'w') as f:
+            json_list = [dataclasses.asdict(video_file) for video_file in video_files]
+            json_str = json.dumps(json_list, indent=4)
+            f.write(json_str)
 
 
 if __name__ == '__main__':
