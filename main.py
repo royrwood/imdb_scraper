@@ -56,7 +56,7 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
                 # print(f'IGNORING: {dir_entry.name}')
                 continue
 
-            scrubbed_video_file_name = scrub_video_file_name(dir_entry.name, filename_metadata_tokens)
+            scrubbed_video_file_name = scrub_video_file_name(file_name, filename_metadata_tokens)
             video_file = VideoFile(file_path=dir_entry.path, scrubbed_file_name=scrubbed_video_file_name)
             video_files.append(video_file)
 
@@ -67,15 +67,17 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--folder', action='store', help='Path to folder to process')
     parser.add_argument('--ignore-extensions', action='store', default='png,jpg,nfo', help='File extensions to ignore (comma-separated list)')
-    parser.add_argument('--filename-metadata-tokens', action='store', default='480p,720p,bluray,hevc,x265,x264,web,webrip,web-dl,repack', help='Filename metadata elements')
+    parser.add_argument('--filename-metadata-tokens', action='store', default='480p,720p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper', help='Filename metadata elements')
     args = parser.parse_args(argv)
 
     if args.folder:
         video_files = scan_folder(args.folder, args.ignore_extensions, args.filename_metadata_tokens)
 
         for video_file in video_files:
-            print(video_file.file_path)
-            print(video_file.scrubbed_file_name)
+            file_name_with_ext = os.path.basename(video_file.file_path)
+            filename_parts = os.path.splitext(file_name_with_ext)
+            file_name = filename_parts[0]
+            print(f'{file_name} -> {video_file.scrubbed_file_name}')
 
 
 if __name__ == '__main__':
