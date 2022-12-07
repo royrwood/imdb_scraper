@@ -1,9 +1,14 @@
-import sys
-import os
-import re
 import argparse
 from dataclasses import dataclass
+import logging
+import os
+import re
+import sys
 from typing import List
+
+
+logging.basicConfig(format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
+LOGGER = logging.getLogger()
 
 
 VIDEOFILE_JSON_FILENAME = 'video_info.json'
@@ -60,7 +65,6 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
                 filename_extension = filename_extension[1:]
 
             if filename_extension.lower() in ignore_extensions_list:
-                # print(f'IGNORING: {dir_entry.name}')
                 continue
 
             scrubbed_video_file_name = scrub_video_file_name(filename_no_extension, filename_metadata_tokens)
@@ -88,7 +92,7 @@ def main(argv):
 
             match = re.match(r'.*\(?(\d{4})\)?', video_file.scrubbed_file_name)
             if not match:
-                print(f'{video_file.scrubbed_file_name} <-- {file_name} [{file_path}]')
+                LOGGER.info(f'{video_file.scrubbed_file_name} <-- {file_name} [{file_path}]')
 
 
 if __name__ == '__main__':
