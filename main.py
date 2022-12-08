@@ -7,6 +7,8 @@ import re
 import sys
 from typing import List
 
+import requests
+
 
 logging.basicConfig(format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
 LOGGER = logging.getLogger()
@@ -16,13 +18,36 @@ LOGGER = logging.getLogger()
 class VideoFile:
     file_path: str
     scrubbed_file_name: str = ''
+    year: int = 0
     imdb_ref_num: str = ''
 
 
-def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> str:
-    match = re.match(r'(.*\((\d{4})\))', file_name)
+def get_imdb_info(video_file: VideoFile):
+    headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
+        'Referer': 'https://www.imdb.com/'
+    }
+    name = video_file.scrubbed_file_name.strip()
+    name = re.sub(r' +', '+', name)
+    url = f'https://www.imdb.com/find?q={name}'
+    if video_file.year:
+        url += f'+{video_file.year}'
+
+    imdb_response = requests.get(url, headers=headers)
+    imdb_response_text = imdb_response.text
+    with open('imdb_response.txt', 'w', encoding='utf8') as f:
+        f.write(imdb_response_text)
+    pass
+
+
+def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):
+    year = 0
+
+    match = re.match(r'((.*)\((\d{4})\))', file_name)
     if match:
-        file_name = match.group(1)
+        file_name = match.group(2)
+        year = int(match.group(3))
         scrubbed_file_name_list = file_name.replace('.', ' ').split()
 
     else:
@@ -40,12 +65,12 @@ def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> str:
         if scrubbed_file_name_list:
             match = re.match(r'\(?(\d{4})\)?', scrubbed_file_name_list[-1])
             if match:
-                year = match.group(1)
-                scrubbed_file_name_list[-1] = f'({year})'
+                year = int(match.group(1))
+                del scrubbed_file_name_list[-1]
 
     scrubbed_file_name = ' '.join(scrubbed_file_name_list).strip()
-
-    return scrubbed_file_name
+    scrubbed_file_name = re.sub(' +', ' ', scrubbed_file_name)
+    return scrubbed_file_name, year
 
 
 def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_tokens: str) -> List[VideoFile]:
@@ -65,14 +90,17 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
             if filename_extension.lower() in ignore_extensions_list:
                 continue
 
-            scrubbed_video_file_name = scrub_video_file_name(filename_no_extension, filename_metadata_tokens)
-            video_file = VideoFile(file_path=file_path, scrubbed_file_name=scrubbed_video_file_name)
+            scrubbed_video_file_name, year = scrub_video_file_name(filename_no_extension, filename_metadata_tokens)
+            video_file = VideoFile(file_path=file_path, scrubbed_file_name=scrubbed_video_file_name, year=year)
             video_files.append(video_file)
 
     return video_files
 
 
 def main(argv):
+    video_file = VideoFile(file_path='', scrubbed_file_name='kiss kiss bang bang', year=2005)
+    get_imdb_info(video_file)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--folder', action='store', help='Path to folder to process')
     parser.add_argument('--ignore-extensions', action='store', default='png,jpg,nfo', help='File extensions to ignore (comma-separated list)')
@@ -84,18 +112,24 @@ def main(argv):
         LOGGER.info('Scanning folder %s', args.folder)
         video_files = scan_folder(args.folder, args.ignore_extensions, args.filename_metadata_tokens)
 
+        max_len = -1
+        for video_file in video_files:
+            len_scrubbed_file_name = len(video_file.scrubbed_file_name)
+            max_len = max(max_len, len_scrubbed_file_name)
+
         for video_file in video_files:
             file_path = video_file.file_path
             file_name_with_ext = os.path.basename(file_path)
             filename_parts = os.path.splitext(file_name_with_ext)
             file_name = filename_parts[0]
 
-            match = re.match(r'.*\(?(\d{4})\)?', video_file.scrubbed_file_name)
-            if not match:
-                LOGGER.info(f'{video_file.scrubbed_file_name} <-- {file_name} [{file_path}]')
+            if video_file.year:
+                LOGGER.info(f'{video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]')
+            else:
+                LOGGER.info(f'{video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]')
 
-        LOGGER.info('Saving results %s', args.file_name)
-        with open(args.file_name, 'w') as f:
+        LOGGER.info('Saving results %s', args.save_file)
+        with open(args.save_file, 'w') as f:
             json_list = [dataclasses.asdict(video_file) for video_file in video_files]
             json_str = json.dumps(json_list, indent=4)
             f.write(json_str)
