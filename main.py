@@ -20,10 +20,10 @@ class VideoFile:
     file_path: str
     scrubbed_file_name: str = ''
     year: int = 0
-    imdb_ref_num: str = ''
+    imdb_tt: str = ''
 
 
-def get_imdb_info(video_file: VideoFile) -> str:
+def get_imdb_search_results(video_file: VideoFile) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
@@ -37,19 +37,45 @@ def get_imdb_info(video_file: VideoFile) -> str:
 
     imdb_response = requests.get(url, headers=headers)
     imdb_response_text = imdb_response.text
-    with open('imdb_response.txt', 'w', encoding='utf8') as f:
+
+    # For testing, save a copy of the file
+    with open('/tmp/imdb_search_response.txt', 'w', encoding='utf8') as f:
         f.write(imdb_response_text)
 
     return imdb_response_text
 
 
-def parse_imdb_info(imdb_response_text: str, video_file: VideoFile):
+def get_imdb_tt_info(video_file: VideoFile) -> str:
+    headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
+        'Referer': 'https://www.imdb.com/'
+    }
+    imdb_tt = video_file.imdb_tt
+    url = f'https://www.imdb.com/title/{imdb_tt}/'
+
+    imdb_response = requests.get(url, headers=headers)
+    imdb_response_text = imdb_response.text
+
+    # For testing, save a copy of the file
+    with open('/tmp/imdb_tt_response.txt', 'w', encoding='utf8') as f:
+        f.write(imdb_response_text)
+
+    return imdb_response_text
+
+
+def parse_imdb_search_results(imdb_response_text: str, video_file: VideoFile):
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
     for search_result_selector in search_result_selectors:
-        title_selector = search_result_selector.xpath(".//div/div/a")
-        title_text = title_selector.xpath("text()").get()
-        imdb_tt_url = title_selector.attrib['href']
+        # title_selector = search_result_selector.xpath(".//div/div/a")
+        # title_text = title_selector.xpath("text()").get()
+        # imdb_tt_url = title_selector.attrib['href']
+        # match = re.match(r'/title/(tt\d+).*', imdb_tt_url)
+        # imdb_tt = match.group(1)
+
+        title_text = search_result_selector.xpath(".//div/div/a/text()").get()
+        imdb_tt_url = search_result_selector.xpath(".//div/div/a/@href").get()
         match = re.match(r'/title/(tt\d+).*', imdb_tt_url)
         imdb_tt = match.group(1)
 
@@ -57,6 +83,27 @@ def parse_imdb_info(imdb_response_text: str, video_file: VideoFile):
         year = year_selector.xpath(".//li/label/text()").get()
         actors = actors_selector.xpath(".//li/label/text()").get()
         LOGGER.info('Found: title="%s", year="%s", actors="%s", imdb_tt="%s"', title_text, year, actors, imdb_tt)
+
+
+def parse_imdb_tt_results(imdb_response_text: str, video_file: VideoFile):
+    imdb_response_selector = parsel.Selector(text=imdb_response_text)
+    # search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
+    # for search_result_selector in search_result_selectors:
+    #     # title_selector = search_result_selector.xpath(".//div/div/a")
+    #     # title_text = title_selector.xpath("text()").get()
+    #     # imdb_tt_url = title_selector.attrib['href']
+    #     # match = re.match(r'/title/(tt\d+).*', imdb_tt_url)
+    #     # imdb_tt = match.group(1)
+    #
+    #     title_text = search_result_selector.xpath(".//div/div/a/text()").get()
+    #     imdb_tt_url = search_result_selector.xpath(".//div/div/a/@href").get()
+    #     match = re.match(r'/title/(tt\d+).*', imdb_tt_url)
+    #     imdb_tt = match.group(1)
+    #
+    #     year_selector, actors_selector = search_result_selector.xpath(".//div/div/ul")
+    #     year = year_selector.xpath(".//li/label/text()").get()
+    #     actors = actors_selector.xpath(".//li/label/text()").get()
+    #     LOGGER.info('Found: title="%s", year="%s", actors="%s", imdb_tt="%s"', title_text, year, actors, imdb_tt)
 
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):
@@ -116,12 +163,17 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
 
 
 def main(argv):
-    video_file = VideoFile(file_path='', scrubbed_file_name='kiss kiss bang bang', year=2005)
-    # get_imdb_info(video_file)
+    video_file = VideoFile(file_path='', scrubbed_file_name='kiss kiss bang bang', year=2005, imdb_tt='tt0373469')
+    # get_imdb_search_results(video_file)
+    get_imdb_tt_info(video_file)
 
-    with open('imdb_response.txt') as f:
+    with open('/tmp/imdb_search_response.txt') as f:
         imdb_text = f.read()
-    parse_imdb_info(imdb_text, video_file)
+    parse_imdb_search_results(imdb_text, video_file)
+
+    with open('/tmp/imdb_tt_response.txt') as f:
+        imdb_text = f.read()
+    parse_imdb_tt_results(imdb_text, video_file)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--folder', action='store', help='Path to folder to process')
