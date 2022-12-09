@@ -7,6 +7,7 @@ import re
 import sys
 from typing import List
 
+import parsel
 import requests
 
 
@@ -22,7 +23,7 @@ class VideoFile:
     imdb_ref_num: str = ''
 
 
-def get_imdb_info(video_file: VideoFile):
+def get_imdb_info(video_file: VideoFile) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
@@ -38,8 +39,24 @@ def get_imdb_info(video_file: VideoFile):
     imdb_response_text = imdb_response.text
     with open('imdb_response.txt', 'w', encoding='utf8') as f:
         f.write(imdb_response_text)
-    pass
 
+    return imdb_response_text
+
+
+def parse_imdb_info(imdb_response_text: str, video_file: VideoFile):
+    imdb_response_selector = parsel.Selector(text=imdb_response_text)
+    search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
+    for search_result_selector in search_result_selectors:
+        title_selector = search_result_selector.xpath(".//a")
+        title_text = title_selector.xpath("text()").get()
+        year = search_result_selector.xpath(".//div/div/ul")[0].xpath(".//li/label/text()").get()
+        imdb_tt_url = title_selector.attrib['href']
+        match = re.match(r'/title/(tt\d+).*', imdb_tt_url)
+        imdb_tt = match.group(1)
+        LOGGER.info('Found: title="%s", year="%s", imdb_tt="%s"', title_text, year, imdb_tt)
+
+# <ul class="ipc-inline-list ipc-inline-list--show-dividers ipc-inline-list--no-wrap ipc-inline-list--inline ipc-metadata-list-summary-item__tl base" role="presentation"> <li role="presentation" class="ipc-inline-list__item"><label class="ipc-metadata-list-summary-item__li" role="button" tabindex="0" aria-disabled="false" for="_blank">2005</label></li></ul>
+# <ul class="ipc-inline-list ipc-inline-list--show-dividers ipc-inline-list--no-wrap ipc-inline-list--inline ipc-metadata-list-summary-item__stl base" role="presentation"><li role="presentation" class="ipc-inline-list__item"><label class="ipc-metadata-list-summary-item__li" role="button" tabindex="0" aria-disabled="false" for="_blank">Robert Downey Jr., Val Kilmer</label></li></ul>
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):
     year = 0
@@ -99,7 +116,11 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
 
 def main(argv):
     video_file = VideoFile(file_path='', scrubbed_file_name='kiss kiss bang bang', year=2005)
-    get_imdb_info(video_file)
+    # get_imdb_info(video_file)
+
+    with open('imdb_response.txt') as f:
+        imdb_text = f.read()
+    parse_imdb_info(imdb_text, video_file)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--folder', action='store', help='Path to folder to process')
