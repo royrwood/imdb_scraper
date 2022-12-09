@@ -47,16 +47,17 @@ def parse_imdb_info(imdb_response_text: str, video_file: VideoFile):
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
     for search_result_selector in search_result_selectors:
-        title_selector = search_result_selector.xpath(".//a")
+        title_selector = search_result_selector.xpath(".//div/div/a")
         title_text = title_selector.xpath("text()").get()
-        year = search_result_selector.xpath(".//div/div/ul")[0].xpath(".//li/label/text()").get()
         imdb_tt_url = title_selector.attrib['href']
         match = re.match(r'/title/(tt\d+).*', imdb_tt_url)
         imdb_tt = match.group(1)
-        LOGGER.info('Found: title="%s", year="%s", imdb_tt="%s"', title_text, year, imdb_tt)
 
-# <ul class="ipc-inline-list ipc-inline-list--show-dividers ipc-inline-list--no-wrap ipc-inline-list--inline ipc-metadata-list-summary-item__tl base" role="presentation"> <li role="presentation" class="ipc-inline-list__item"><label class="ipc-metadata-list-summary-item__li" role="button" tabindex="0" aria-disabled="false" for="_blank">2005</label></li></ul>
-# <ul class="ipc-inline-list ipc-inline-list--show-dividers ipc-inline-list--no-wrap ipc-inline-list--inline ipc-metadata-list-summary-item__stl base" role="presentation"><li role="presentation" class="ipc-inline-list__item"><label class="ipc-metadata-list-summary-item__li" role="button" tabindex="0" aria-disabled="false" for="_blank">Robert Downey Jr., Val Kilmer</label></li></ul>
+        year_selector, actors_selector = search_result_selector.xpath(".//div/div/ul")
+        year = year_selector.xpath(".//li/label/text()").get()
+        actors = actors_selector.xpath(".//li/label/text()").get()
+        LOGGER.info('Found: title="%s", year="%s", actors="%s", imdb_tt="%s"', title_text, year, actors, imdb_tt)
+
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):
     year = 0
