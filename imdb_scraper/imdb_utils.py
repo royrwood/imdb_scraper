@@ -1,7 +1,7 @@
 import argparse
 import dataclasses
 import json
-import logging
+# import logging
 import os
 import re
 import sys
@@ -11,8 +11,8 @@ import parsel
 import requests
 
 
-logging.basicConfig(format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
-LOGGER = logging.getLogger()
+# logging.basicConfig(format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
+# LOGGER = logging.getLogger()
 
 
 @dataclasses.dataclass
@@ -89,7 +89,7 @@ def parse_imdb_tt_results(imdb_response_text: str, video_file: VideoFile):
     imdb_rating = imdb_response_selector.xpath("//div[@data-testid='hero-rating-bar__aggregate-rating__score']/span/text()").get()
     imdb_genres = imdb_response_selector.xpath("//div[@data-testid='genres']/div/a/span/text()").getall()
     imdb_plot = imdb_response_selector.xpath("//span[@data-testid='plot-xl']/text()").get()
-    LOGGER.info('Found: imdb_rating="%s", imdb_genres="%s", imdb_plot="%s"', imdb_rating, imdb_genres, imdb_plot)
+    # LOGGER.info('Found: imdb_rating="%s", imdb_genres="%s", imdb_plot="%s"', imdb_rating, imdb_genres, imdb_plot)
 
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):
@@ -169,7 +169,7 @@ def main(argv):
     args = parser.parse_args(argv)
 
     if args.folder:
-        LOGGER.info('Scanning folder %s', args.folder)
+        # LOGGER.info('Scanning folder %s', args.folder)
         video_files = scan_folder(args.folder, args.ignore_extensions, args.filename_metadata_tokens)
 
         max_len = -1
@@ -183,14 +183,14 @@ def main(argv):
             filename_parts = os.path.splitext(file_name_with_ext)
             file_name = filename_parts[0]
 
-            LOGGER.info(f'{video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]')
+            # LOGGER.info(f'{video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]')
 
-        for video_file in video_files:
-            imdb_response_text = get_imdb_search_results(video_file)
-            parse_imdb_search_results(imdb_response_text, video_file)
-            get_imdb_tt_info(video_file)
+        # for video_file in video_files:
+        #     imdb_response_text = get_imdb_search_results(video_file)
+        #     parse_imdb_search_results(imdb_response_text, video_file)
+        #     get_imdb_tt_info(video_file)
 
-        LOGGER.info('Saving results %s', args.save_file)
+        # LOGGER.info('Saving results %s', args.save_file)
         with open(args.save_file, 'w') as f:
             json_list = [dataclasses.asdict(video_file) for video_file in video_files]
             json_str = json.dumps(json_list, indent=4)

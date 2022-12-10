@@ -28,20 +28,14 @@
 import copy
 import curses
 import curses.panel
-import logging
 import os
 import traceback
 from enum import IntEnum, unique
-import sys
 from typing import List, Tuple, Callable, Union
 
 
-# Always log to a file in /tmp
-LOG_FILE_DIR = '/tmp/'
-logging.basicConfig(filename=LOG_FILE_DIR + 'curses_gui.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
-LOGGER = logging.getLogger('file')
-CONSOLE_LOGGER = logging.getLogger('console')
-CONSOLE_LOGGER.addHandler(logging.StreamHandler(sys.stdout))
+# logging.basicConfig(filename='/tmp/curses_gui.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
+# LOGGER = logging.getLogger('file')
 
 
 # Define some nicer constants for keystrokes
@@ -783,8 +777,8 @@ class MainMenu(ScrollingPanel):
 
                 except Exception: # noqa PyBroadException
                     exception_dump_lines = traceback.format_exc().splitlines()
-                    for exception_line in exception_dump_lines:
-                        LOGGER.info(exception_line)
+                    # for exception_line in exception_dump_lines:
+                    #     LOGGER.info(exception_line)
                     message_panel = MessagePanel([('Exception occurred:', CursesColourBinding.COLOUR_BLACK_RED), ''] + exception_dump_lines)
                     message_panel.run()
 
@@ -831,6 +825,6 @@ def console_gui_main(main_menu_cls: type) -> None:
     # This has to happen BEFORE the call to curses.wrapper() below
     os.environ.setdefault('ESCDELAY', '25')
 
-    LOGGER.info('Begin interactive mode')
+    # LOGGER.info('Begin interactive mode')
     curses.wrapper(interactive_main, main_menu_cls)
-    LOGGER.info('End interactive mode')
+    # LOGGER.info('End interactive mode')
