@@ -455,6 +455,16 @@ class ScrollingPanel:
                 run_result = ScrollPanelRunResult(row_index=row_index, col_index=col_index, text=text, key=key)
                 return run_result
 
+    def pick_a_line_or_cancel(self, stop_key_list: List[Keycodes] = None):
+        while True:
+            run_result = self.run(stop_key_list)
+            if run_result.key == Keycodes.ESCAPE:
+                return None
+            if run_result.key != Keycodes.RETURN:
+                continue
+
+            return run_result.row_index
+
 
 class MessagePanel:
     """Similar to the ScrollingPanel, but just displays a message and waits for user to press enter/escape.

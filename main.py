@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import dataclasses
 import logging
 import os
+import json
 import math
+from typing import List
 
+import imdb_scraper.imdb_utils
 from imdb_scraper import curses_gui
 from imdb_scraper import imdb_utils
 
@@ -12,49 +16,85 @@ from imdb_scraper import imdb_utils
 class MyMenu(curses_gui.MainMenu):
     def __init__(self):
         super(MyMenu, self).__init__()
+        self.video_files: List[imdb_scraper.imdb_utils.VideoFile] = None
 
     def set_menu_choices(self):
         self.menu_choices = []
-        self.menu_choices.append(('Some menu choice', self.class_callback_function))
-        self.menu_choices.append(('Scan Video Folder', scan_video_folder))
+        self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
+        self.menu_choices.append(('Load Video Info', self.load_video_file_data))
 
-    def class_callback_function(self):
-        logging.info('Callback for some menu choice (class method callback)')
+    def display_video_file_data(self):
+        max_len = -1
+        for video_file in self.video_files:
+            len_scrubbed_file_name = len(video_file.scrubbed_file_name)
+            max_len = max(max_len, len_scrubbed_file_name)
 
+        num_video_files = len(self.video_files)
+        num_digits = math.floor(math.log10(num_video_files)) + 1
 
-def scan_video_folder():
-    with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/media/rrwood/Seagate Expansion Drive/Videos/') as input_panel:
-        video_folder_path = input_panel.run()
-    if video_folder_path is None:
-        return
+        video_info_lines = list()
+        for i, video_file in enumerate(self.video_files):
+            file_path = video_file.file_path
+            file_name_with_ext = os.path.basename(file_path)
+            filename_parts = os.path.splitext(file_name_with_ext)
+            file_name = filename_parts[0]
 
-    ignore_extensions = 'png,jpg,nfo'
-    filename_metadata_tokens = '480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv'
+            info = f'{i:0{num_digits}d} {video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]'
+            video_info_lines.append(info)
 
-    video_files = imdb_utils.scan_folder(video_folder_path, ignore_extensions, filename_metadata_tokens)
+        with curses_gui.ScrollingPanel(rows=video_info_lines) as scrolling_panel:
+            scrolling_panel.run()
 
-    max_len = -1
-    for video_file in video_files:
-        len_scrubbed_file_name = len(video_file.scrubbed_file_name)
-        max_len = max(max_len, len_scrubbed_file_name)
+    def save_video_file_data(self):
+        final_message = 'Video data not saved'
 
-    num_video_files = len(video_files)
-    num_digits = math.floor(math.log10(num_video_files)) + 1
-    logging.info(f'num_video_files={num_video_files}')
-    logging.info(f'num_digits={num_digits}')
+        with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value='imdb_video_info.json') as input_panel:
+            video_file_path = input_panel.run()
+        input_panel.hide()
 
-    video_info_lines = list()
-    for i, video_file in enumerate(video_files):
-        file_path = video_file.file_path
-        file_name_with_ext = os.path.basename(file_path)
-        filename_parts = os.path.splitext(file_name_with_ext)
-        file_name = filename_parts[0]
+        if video_file_path:
+            with open(video_file_path, 'w') as f:
+                json_list = [dataclasses.asdict(video_file) for video_file in self.video_files]
+                json_str = json.dumps(json_list, indent=4)
+                f.write(json_str)
+            final_message = f'Video saved to {video_file_path}'
 
-        info = f'{i:0{num_digits}d} {video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]'
-        video_info_lines.append(info)
+        with curses_gui.MessagePanel([final_message]) as message_panel:
+            message_panel.run()
 
-    with curses_gui.ScrollingPanel(rows=video_info_lines) as scrolling_panel:
-        scrolling_panel.run()
+    def load_video_file_data(self):
+        with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value='imdb_video_info.json') as input_panel:
+            video_file_path = input_panel.run()
+        if video_file_path is None:
+            return
+
+        with open(video_file_path, encoding='utf8') as f:
+            video_files_json = json.load(f)
+
+        self.video_files = list()
+        for video_file_dict in video_files_json:
+            video_file = imdb_utils.VideoFile(**video_file_dict)
+            self.video_files.append(video_file)
+
+        self.display_video_file_data()
+
+    def scan_video_folder(self):
+        with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/media/rrwood/Seagate Expansion Drive/Videos/') as input_panel:
+            video_folder_path = input_panel.run()
+        if video_folder_path is None:
+            return
+
+        ignore_extensions = 'png,jpg,nfo'
+        filename_metadata_tokens = '480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv'
+
+        self.video_files = imdb_utils.scan_folder(video_folder_path, ignore_extensions, filename_metadata_tokens)
+
+        with curses_gui.ScrollingPanel(rows=['Save video info', 'Do not save video info']) as scrolling_panel:
+            if scrolling_panel.pick_a_line_or_cancel() == 0:
+                scrolling_panel.hide()
+                self.save_video_file_data()
+
+        self.display_video_file_data()
 
 
 if __name__ == '__main__':
