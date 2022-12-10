@@ -1,26 +1,20 @@
-import argparse
 import dataclasses
-import json
-# import logging
 import os
 import re
-import sys
 from typing import List
 
 import parsel
 import requests
 
 
-# logging.basicConfig(format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
-# LOGGER = logging.getLogger()
-
-
 @dataclasses.dataclass
 class VideoFile:
-    file_path: str
+    file_path: str = ''
     scrubbed_file_name: str = ''
     year: int = 0
     imdb_tt: str = ''
+    imdb_name: str = ''
+    imdb_year: str = ''
     imdb_rating: str = ''
     imdb_genres: List[str] = None
 
@@ -67,21 +61,19 @@ def get_imdb_tt_info(video_file: VideoFile) -> str:
 
 
 def parse_imdb_search_results(imdb_response_text: str, video_file: VideoFile):
+    match_video_files = list()
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
     for search_result_selector in search_result_selectors:
         imdb_title = search_result_selector.xpath(".//div/div/a/text()").get()
+        imdb_year = search_result_selector.xpath(".//div/div/ul[1]/li/label/text()").get()
         imdb_tt_url = search_result_selector.xpath(".//div/div/a/@href").get()
         imdb_tt = re.match(r'/title/(tt\d+).*', imdb_tt_url).group(1)
 
-        video_file.imdb_tt = imdb_tt
+        match_video_file = VideoFile(imdb_tt=imdb_tt, imdb_name=imdb_title, imdb_year=imdb_year)
+        match_video_files.append(match_video_file)
 
-        # year_selector, actors_selector = search_result_selector.xpath(".//div/div/ul")
-        # year = year_selector.xpath(".//li/label/text()").get()
-        # actors = actors_selector.xpath(".//li/label/text()").get()
-        # LOGGER.info('Found: title="%s", year="%s", actors="%s", imdb_tt="%s"', title_text, year, actors, imdb_tt)
-
-        video_file.imdb_tt = imdb_tt
+    return match_video_files
 
 
 def parse_imdb_tt_results(imdb_response_text: str, video_file: VideoFile):
@@ -148,54 +140,54 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
     return video_files
 
 
-def main(argv):
-    # video_file = VideoFile(file_path='', scrubbed_file_name='kiss kiss bang bang', year=2005, imdb_tt='tt0373469')
-    # get_imdb_search_results(video_file)
-
-    # with open('/tmp/imdb_search_response.txt') as f:
-    #     imdb_text = f.read()
-    # parse_imdb_search_results(imdb_text, video_file)
-
-    # get_imdb_tt_info(video_file)
-    # with open('/tmp/imdb_tt_response.txt') as f:
-    #     imdb_text = f.read()
-    # parse_imdb_tt_results(imdb_text, video_file)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--folder', action='store', help='Path to folder to process')
-    parser.add_argument('--ignore-extensions', action='store', default='png,jpg,nfo', help='File extensions to ignore (comma-separated list)')
-    parser.add_argument('--filename-metadata-tokens', action='store', default='480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv', help='Filename metadata elements')
-    parser.add_argument('--save-file', action='store', default='video_info.json', help='Name of file used to save JSON data')
-    args = parser.parse_args(argv)
-
-    if args.folder:
-        # LOGGER.info('Scanning folder %s', args.folder)
-        video_files = scan_folder(args.folder, args.ignore_extensions, args.filename_metadata_tokens)
-
-        max_len = -1
-        for video_file in video_files:
-            len_scrubbed_file_name = len(video_file.scrubbed_file_name)
-            max_len = max(max_len, len_scrubbed_file_name)
-
-        for video_file in video_files:
-            file_path = video_file.file_path
-            file_name_with_ext = os.path.basename(file_path)
-            filename_parts = os.path.splitext(file_name_with_ext)
-            file_name = filename_parts[0]
-
-            # LOGGER.info(f'{video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]')
-
-        # for video_file in video_files:
-        #     imdb_response_text = get_imdb_search_results(video_file)
-        #     parse_imdb_search_results(imdb_response_text, video_file)
-        #     get_imdb_tt_info(video_file)
-
-        # LOGGER.info('Saving results %s', args.save_file)
-        with open(args.save_file, 'w') as f:
-            json_list = [dataclasses.asdict(video_file) for video_file in video_files]
-            json_str = json.dumps(json_list, indent=4)
-            f.write(json_str)
-
-
-if __name__ == '__main__':
-    main(sys.argv[1:])
+# def main(argv):
+#     # video_file = VideoFile(file_path='', scrubbed_file_name='kiss kiss bang bang', year=2005, imdb_tt='tt0373469')
+#     # get_imdb_search_results(video_file)
+#
+#     # with open('/tmp/imdb_search_response.txt') as f:
+#     #     imdb_text = f.read()
+#     # parse_imdb_search_results(imdb_text, video_file)
+#
+#     # get_imdb_tt_info(video_file)
+#     # with open('/tmp/imdb_tt_response.txt') as f:
+#     #     imdb_text = f.read()
+#     # parse_imdb_tt_results(imdb_text, video_file)
+#
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--folder', action='store', help='Path to folder to process')
+#     parser.add_argument('--ignore-extensions', action='store', default='png,jpg,nfo', help='File extensions to ignore (comma-separated list)')
+#     parser.add_argument('--filename-metadata-tokens', action='store', default='480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv', help='Filename metadata elements')
+#     parser.add_argument('--save-file', action='store', default='video_info.json', help='Name of file used to save JSON data')
+#     args = parser.parse_args(argv)
+#
+#     if args.folder:
+#         # LOGGER.info('Scanning folder %s', args.folder)
+#         video_files = scan_folder(args.folder, args.ignore_extensions, args.filename_metadata_tokens)
+#
+#         max_len = -1
+#         for video_file in video_files:
+#             len_scrubbed_file_name = len(video_file.scrubbed_file_name)
+#             max_len = max(max_len, len_scrubbed_file_name)
+#
+#         for video_file in video_files:
+#             file_path = video_file.file_path
+#             file_name_with_ext = os.path.basename(file_path)
+#             filename_parts = os.path.splitext(file_name_with_ext)
+#             file_name = filename_parts[0]
+#
+#             # LOGGER.info(f'{video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]')
+#
+#         # for video_file in video_files:
+#         #     imdb_response_text = get_imdb_search_results(video_file)
+#         #     parse_imdb_search_results(imdb_response_text, video_file)
+#         #     get_imdb_tt_info(video_file)
+#
+#         # LOGGER.info('Saving results %s', args.save_file)
+#         with open(args.save_file, 'w') as f:
+#             json_list = [dataclasses.asdict(video_file) for video_file in video_files]
+#             json_str = json.dumps(json_list, indent=4)
+#             f.write(json_str)
+#
+#
+# if __name__ == '__main__':
+#     main(sys.argv[1:])

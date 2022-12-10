@@ -28,6 +28,7 @@
 import copy
 import curses
 import curses.panel
+import logging
 import os
 import traceback
 from enum import IntEnum, unique
@@ -313,6 +314,9 @@ class ScrollingPanel:
         if self.draw_border:
             self.window.border()
 
+        # # TODO: Does this fix it??!?!?
+        # self.window.addstr(0, 0, '*', curses.color_pair(CursesColourBinding.COLOUR_BLACK_YELLOW))
+
         if self.header_row:
             # TODO: Ugh-- we need to render the whole Row, not just the first column!
             text_colour = self.header_row.columns[0].colour
@@ -322,12 +326,13 @@ class ScrollingPanel:
 
         for ri in range(0, self.content_height):
             row_index = self.top_visible_row_index + ri
+            y = self.content_top + ri
 
             if row_index >= self.num_rows:
                 text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
                 raw_text = ''
                 padded_text = u'{raw_text: <{width}.{width}}'.format(raw_text=raw_text, width=self.content_width)
-                self.window.addstr(1, self.content_left, padded_text, curses.color_pair(text_colour))
+                self.window.addstr(y, self.content_left, padded_text, curses.color_pair(text_colour))
                 continue
 
             row = self.rows[row_index]
@@ -361,13 +366,12 @@ class ScrollingPanel:
                     # Shouldn't this be column.colour.value?
                     text_colour = column.colour
 
-                padded_text = u'{raw_text: <{width}.{width}}'.format(raw_text=raw_text, width=column_width)
+                padded_text = f'{raw_text: <{column_width}.{column_width}}'
                 x = self.content_left + chars_rendered
-                y = self.content_top + ri
                 self.window.addstr(y, x, padded_text, curses.color_pair(text_colour))
                 chars_rendered += column_width
 
-            self.needs_render = False
+        self.needs_render = False
 
     def handle_keystroke(self, key):
         hilighted_row_index = self.hilighted_row_index

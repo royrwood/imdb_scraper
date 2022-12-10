@@ -16,21 +16,41 @@ from imdb_scraper import imdb_utils
 class MyMenu(curses_gui.MainMenu):
     def __init__(self):
         super(MyMenu, self).__init__()
+        self.video_file_path: str = 'imdb_video_info.json'
         self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = None
         self.video_files_is_dirty: bool = False
 
     def set_menu_choices(self):
         self.menu_choices = []
-        self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
         self.menu_choices.append(('Load Video Info', self.load_video_file_data))
+        self.menu_choices.append(('Save Video Info', self.save_video_file_data))
+        self.menu_choices.append(('Display Video Info', self.display_all_video_file_data))
+        self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
 
     def quit_confirm(self):
         if self.video_files_is_dirty:
+            with curses_gui.MessagePanel(['Video data has been updated but not saved']) as message_panel:
+                message_panel.run()
             return False
         else:
             return True
 
-    def display_video_file_data(self):
+    @staticmethod
+    def display_individual_video_file(video_file: imdb_utils.VideoFile):
+        json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
+        json_str_lines = json_str.splitlines()
+        display_lines = ['Search IMDB', curses_gui.HorizontalLine()] + json_str_lines
+        with curses_gui.ScrollingPanel(rows=display_lines, height=0.5, width=0.5) as video_info_panel:
+            while True:
+                run_result = video_info_panel.run()
+                if run_result.key == curses_gui.Keycodes.ESCAPE:
+                    break
+                elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
+                    imdb_search_response = imdb_utils.get_imdb_search_results(video_file)
+                    match_video_files = imdb_utils.parse_imdb_search_results(imdb_search_response, video_file)
+                    pass
+
+    def display_all_video_file_data(self):
         max_len = -1
         for video_file in self.video_files:
             len_scrubbed_file_name = len(video_file.scrubbed_file_name)
@@ -45,38 +65,52 @@ class MyMenu(curses_gui.MainMenu):
             file_name_with_ext = os.path.basename(file_path)
             filename_parts = os.path.splitext(file_name_with_ext)
             file_name = filename_parts[0]
+            year_str = f'({video_file.year})' if video_file.year else ' ' * 6
+            imdb_tt = video_file.imdb_tt
 
-            info = f'{i:0{num_digits}d} {video_file.scrubbed_file_name:{max_len}} ({video_file.year}) <-- {file_name} [{file_path}]'
+            info = f'[{i:0{num_digits}d}] {video_file.scrubbed_file_name:{max_len}} {year_str} {imdb_tt}]'
             video_info_lines.append(info)
 
         with curses_gui.ScrollingPanel(rows=video_info_lines) as scrolling_panel:
-            scrolling_panel.run()
+            while True:
+                run_result = scrolling_panel.run()
+                if run_result.key == curses_gui.Keycodes.ESCAPE:
+                    break
+                elif run_result.key == curses_gui.Keycodes.RETURN:
+                    video_file = self.video_files[run_result.row_index]
+                    self.display_individual_video_file(video_file)
 
     def save_video_file_data(self):
-        final_message = 'Video data not saved'
+        if not self.video_files:
+            final_message = 'No video info to save'
 
-        with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value='imdb_video_info.json') as input_panel:
-            video_file_path = input_panel.run()
-        input_panel.hide()
+        else:
+            final_message = 'Video data not saved'
 
-        if video_file_path:
-            with open(video_file_path, 'w') as f:
-                json_list = [dataclasses.asdict(video_file) for video_file in self.video_files]
-                json_str = json.dumps(json_list, indent=4)
-                f.write(json_str)
-            final_message = f'Video saved to {video_file_path}'
-            self.video_files_is_dirty = False
+            with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value=self.video_file_path) as input_panel:
+                video_file_path = input_panel.run()
+            input_panel.hide()
+
+            if video_file_path:
+                with open(video_file_path, 'w') as f:
+                    json_list = [dataclasses.asdict(video_file) for video_file in self.video_files]
+                    json_str = json.dumps(json_list, indent=4)
+                    f.write(json_str)
+                final_message = f'Video saved to {video_file_path}'
+                self.video_files_is_dirty = False
 
         with curses_gui.MessagePanel([final_message]) as message_panel:
             message_panel.run()
 
     def load_video_file_data(self):
-        with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value='imdb_video_info.json') as input_panel:
+        with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value=self.video_file_path) as input_panel:
             video_file_path = input_panel.run()
         if video_file_path is None:
             return
 
-        with open(video_file_path, encoding='utf8') as f:
+        self.video_file_path = video_file_path
+
+        with open(self.video_file_path, encoding='utf8') as f:
             video_files_json = json.load(f)
 
         self.video_files_is_dirty = False
@@ -86,7 +120,8 @@ class MyMenu(curses_gui.MainMenu):
             video_file = imdb_utils.VideoFile(**video_file_dict)
             self.video_files.append(video_file)
 
-        self.display_video_file_data()
+        with curses_gui.MessagePanel([f'Loaded video file date from {self.video_file_path}']) as message_panel:
+            message_panel.run()
 
     def scan_video_folder(self):
         with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/media/rrwood/Seagate Expansion Drive/Videos/') as input_panel:
@@ -105,8 +140,10 @@ class MyMenu(curses_gui.MainMenu):
                 scrolling_panel.hide()
                 self.save_video_file_data()
 
-        self.display_video_file_data()
+        self.display_all_video_file_data()
 
+
+# For Pycharm "Attach to Process" execute: sudo sysctl kernel.yama.ptrace_scope=0
 
 if __name__ == '__main__':
     logging.basicConfig(filename='/tmp/imdb_scraper.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
