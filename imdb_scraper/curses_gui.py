@@ -760,6 +760,9 @@ class MainMenu(ScrollingPanel):
         """Populate self.menu_choices with a list of tuples, (<menu item text>, <menu item callback>)"""
         self.menu_choices = []
 
+    def quit_confirm(self):
+        return True
+
     def run_modally(self):
         """Run modally, handling user keystrokes, and executing the callback when the user selects a menu item"""
 
@@ -776,8 +779,9 @@ class MainMenu(ScrollingPanel):
             key = self.window.getch()
 
             if key == Keycodes.ESCAPE:
-                self.hide()
-                return key
+                if self.quit_confirm():
+                    self.hide()
+                    return key
             elif key == Keycodes.RETURN:
                 self.hide()
                 try:

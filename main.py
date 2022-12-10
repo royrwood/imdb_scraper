@@ -6,7 +6,7 @@ import logging
 import os
 import json
 import math
-from typing import List
+from typing import List, Optional
 
 import imdb_scraper.imdb_utils
 from imdb_scraper import curses_gui
@@ -16,12 +16,19 @@ from imdb_scraper import imdb_utils
 class MyMenu(curses_gui.MainMenu):
     def __init__(self):
         super(MyMenu, self).__init__()
-        self.video_files: List[imdb_scraper.imdb_utils.VideoFile] = None
+        self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = None
+        self.video_files_is_dirty: bool = False
 
     def set_menu_choices(self):
         self.menu_choices = []
         self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
         self.menu_choices.append(('Load Video Info', self.load_video_file_data))
+
+    def quit_confirm(self):
+        if self.video_files_is_dirty:
+            return False
+        else:
+            return True
 
     def display_video_file_data(self):
         max_len = -1
@@ -58,6 +65,7 @@ class MyMenu(curses_gui.MainMenu):
                 json_str = json.dumps(json_list, indent=4)
                 f.write(json_str)
             final_message = f'Video saved to {video_file_path}'
+            self.video_files_is_dirty = False
 
         with curses_gui.MessagePanel([final_message]) as message_panel:
             message_panel.run()
@@ -70,6 +78,8 @@ class MyMenu(curses_gui.MainMenu):
 
         with open(video_file_path, encoding='utf8') as f:
             video_files_json = json.load(f)
+
+        self.video_files_is_dirty = False
 
         self.video_files = list()
         for video_file_dict in video_files_json:
@@ -88,6 +98,7 @@ class MyMenu(curses_gui.MainMenu):
         filename_metadata_tokens = '480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv'
 
         self.video_files = imdb_utils.scan_folder(video_folder_path, ignore_extensions, filename_metadata_tokens)
+        self.video_files_is_dirty = True
 
         with curses_gui.ScrollingPanel(rows=['Save video info', 'Do not save video info']) as scrolling_panel:
             if scrolling_panel.pick_a_line_or_cancel() == 0:
