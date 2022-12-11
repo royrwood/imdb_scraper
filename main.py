@@ -19,6 +19,7 @@ class MyMenu(curses_gui.MainMenu):
         self.video_file_path: str = 'imdb_video_info.json'
         self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = None
         self.video_files_is_dirty: bool = False
+        self.logger = logging.getLogger()
 
     def set_menu_choices(self):
         self.menu_choices = []
@@ -45,9 +46,10 @@ class MyMenu(curses_gui.MainMenu):
 
     @staticmethod
     def test_column_mode():
+        raise Exception('This is a test')
         import random
         import string
-        # display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
+
         display_lines = list()
         for row_i in range(100):
             text_list = list()
@@ -69,8 +71,12 @@ class MyMenu(curses_gui.MainMenu):
         imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
         imdb_info_list = imdb_utils.parse_imdb_search_results(imdb_search_response)
 
+        header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
+                          curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
+                          curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
+        header_row = curses_gui.Row(columns=header_columns)
         display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
-        with curses_gui.ScrollingPanel(rows=display_lines, height=0.5, width=0.5) as imdb_search_results_panel:
+        with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
             while True:
                 run_result = imdb_search_results_panel.run()
                 if run_result.key == curses_gui.Keycodes.ESCAPE:

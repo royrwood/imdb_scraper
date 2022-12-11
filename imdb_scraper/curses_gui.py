@@ -28,10 +28,11 @@
 import copy
 import curses
 import curses.panel
+import logging
 import os
 import traceback
 from enum import IntEnum, unique
-from typing import List, Tuple, Callable, Union
+from typing import List, Tuple, Callable, Union, Optional
 
 
 # Define some nicer constants for keystrokes
@@ -786,6 +787,7 @@ class MainMenu(ScrollingPanel):
         super(MainMenu, self).__init__()
 
         self.menu_choices: List[Tuple[str, Callable]] = []
+        self.logger: Optional[logging.Logger] = None
 
     def set_menu_choices(self):
         """Populate self.menu_choices with a list of tuples, (<menu item text>, <menu item callback>)"""
@@ -822,8 +824,9 @@ class MainMenu(ScrollingPanel):
 
                 except Exception: # noqa PyBroadException
                     exception_dump_lines = traceback.format_exc().splitlines()
-                    # for exception_line in exception_dump_lines:
-                    #     LOGGER.info(exception_line)
+                    if self.logger:
+                        for exception_line in exception_dump_lines:
+                            self.logger.info(exception_line)
                     message_panel = MessagePanel([('Exception occurred:', CursesColourBinding.COLOUR_BLACK_RED), ''] + exception_dump_lines)
                     message_panel.run()
 
