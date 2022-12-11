@@ -46,7 +46,6 @@ class MyMenu(curses_gui.MainMenu):
 
     @staticmethod
     def test_column_mode():
-        raise Exception('This is a test')
         import random
         import string
 
