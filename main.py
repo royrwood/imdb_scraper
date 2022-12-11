@@ -37,10 +37,32 @@ class MyMenu(curses_gui.MainMenu):
         else:
             return True
 
+    # @staticmethod
+    # def test_column_mode():
+    #     display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
+    #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
+    #         scrolling_panel.run()
+
     @staticmethod
     def test_column_mode():
-        display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
-        with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
+        import random
+        import string
+        # display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
+        display_lines = list()
+        for row_i in range(100):
+            text_list = list()
+            for col_i in range(2):
+                text_len = random.randint(5, 15)
+                text = ''
+                for text_i in range(text_len):
+                    text += random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits + '      ')
+                text_list.append(text)
+            display_lines.append(text_list)
+        header_columns = list()
+        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+        header_row = curses_gui.Row(columns=header_columns)
+        with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
             scrolling_panel.run()
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):

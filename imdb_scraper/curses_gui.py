@@ -227,6 +227,10 @@ class ScrollingPanel:
                     self.column_widths[i] += 1
 
             if self.grid_mode:
+                if self.header_row:
+                    for i, column in enumerate(self.header_row.columns):
+                        column.width = self.column_widths[i]
+
                 for row in rows:
                     for i, column in enumerate(row.columns):
                         column.width = self.column_widths[i]
@@ -336,11 +340,15 @@ class ScrollingPanel:
             self.window.border()
 
         if self.header_row:
-            # TODO: Ugh-- we need to render the whole Row, not just the first column!
-            text_colour = self.header_row.columns[0].colour
-            raw_text = self.header_row.columns[0].text
-            padded_text = u'{raw_text: <{width}}'.format(raw_text=raw_text, width=self.content_width)
-            self.window.addstr(1, self.content_left, padded_text, curses.color_pair(text_colour))
+            chars_rendered = 0
+            for column in self.header_row.columns:
+                text_colour = column.colour
+                raw_text = column.text
+                column_width = column.width
+                padded_text = f'{raw_text: <{column_width}}'
+                x = self.content_left + chars_rendered
+                self.window.addstr(1, x, padded_text, curses.color_pair(text_colour))
+                chars_rendered += column_width
 
         for ri in range(0, self.content_height):
             row_index = self.top_visible_row_index + ri
@@ -354,7 +362,6 @@ class ScrollingPanel:
                 continue
 
             row = self.rows[row_index]
-            chars_rendered = 0
 
             if isinstance(row, HorizontalLine):
                 x = self.content_left
@@ -365,6 +372,8 @@ class ScrollingPanel:
                     text_colour = row.columns[0].colour
                 self.window.hline(y, x, curses.ACS_HLINE, self.content_width, curses.color_pair(text_colour))
                 continue
+
+            chars_rendered = 0
 
             for ci, column in enumerate(row.columns):
                 raw_text = column.text
@@ -535,7 +544,7 @@ class MessagePanel:
         self.set_message_lines(new_message_lines)
 
     def set_message_lines(self, new_message_lines):
-        self.message_lines = new_message_lines
+        self.message_lines = new_message_lines[:]
         self.num_rows = len(self.message_lines)
         self.rows_max_width = 0
 
