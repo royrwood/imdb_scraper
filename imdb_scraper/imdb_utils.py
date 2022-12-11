@@ -19,17 +19,26 @@ class VideoFile:
     imdb_genres: List[str] = None
 
 
-def get_imdb_search_results(video_file: VideoFile) -> str:
+@dataclasses.dataclass
+class IMDBInfo:
+    imdb_tt: str = ''
+    imdb_name: str = ''
+    imdb_year: str = ''
+    imdb_rating: str = ''
+    imdb_genres: List[str] = None
+
+
+def get_imdb_search_results(video_name: str, year: int = 0) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
         'Referer': 'https://www.imdb.com/'
     }
-    name = video_file.scrubbed_file_name.strip()
+    name = video_name.strip()
     name = re.sub(r' +', '+', name)
     url = f'https://www.imdb.com/find?q={name}'
-    if video_file.year:
-        url += f'+{video_file.year}'
+    if year:
+        url += f'+{year}'
 
     imdb_response = requests.get(url, headers=headers)
     imdb_response_text = imdb_response.text
@@ -41,13 +50,13 @@ def get_imdb_search_results(video_file: VideoFile) -> str:
     return imdb_response_text
 
 
-def get_imdb_tt_info(video_file: VideoFile) -> str:
+def get_imdb_tt_info(imdb_tt: str) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
         'Referer': 'https://www.imdb.com/'
     }
-    imdb_tt = video_file.imdb_tt
+    imdb_tt = imdb_tt
     url = f'https://www.imdb.com/title/{imdb_tt}/'
 
     imdb_response = requests.get(url, headers=headers)
@@ -60,17 +69,17 @@ def get_imdb_tt_info(video_file: VideoFile) -> str:
     return imdb_response_text
 
 
-def parse_imdb_search_results(imdb_response_text: str, video_file: VideoFile):
+def parse_imdb_search_results(imdb_response_text: str) -> List[IMDBInfo]:
     match_video_files = list()
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
     for search_result_selector in search_result_selectors:
-        imdb_title = search_result_selector.xpath(".//div/div/a/text()").get()
-        imdb_year = search_result_selector.xpath(".//div/div/ul[1]/li/label/text()").get()
-        imdb_tt_url = search_result_selector.xpath(".//div/div/a/@href").get()
-        imdb_tt = re.match(r'/title/(tt\d+).*', imdb_tt_url).group(1)
+        imdb_title = search_result_selector.xpath(".//div/div/a/text()").get() or ''
+        imdb_year = search_result_selector.xpath(".//div/div/ul[1]/li/label/text()").get() or ''
+        imdb_tt_url = search_result_selector.xpath(".//div/div/a/@href").get() or ''
+        imdb_tt = re.match(r'/title/(tt\d+).*', imdb_tt_url).group(1) or ''
 
-        match_video_file = VideoFile(imdb_tt=imdb_tt, imdb_name=imdb_title, imdb_year=imdb_year)
+        match_video_file = IMDBInfo(imdb_tt=imdb_tt, imdb_name=imdb_title, imdb_year=imdb_year)
         match_video_files.append(match_video_file)
 
     return match_video_files

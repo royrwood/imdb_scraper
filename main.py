@@ -26,6 +26,8 @@ class MyMenu(curses_gui.MainMenu):
         self.menu_choices.append(('Save Video Info', self.save_video_file_data))
         self.menu_choices.append(('Display Video Info', self.display_all_video_file_data))
         self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
+        self.menu_choices.append((curses_gui.HorizontalLine(), None))
+        self.menu_choices.append(('TEST COLUMN MODE', self.test_column_mode))
 
     def quit_confirm(self):
         if self.video_files_is_dirty:
@@ -36,7 +38,26 @@ class MyMenu(curses_gui.MainMenu):
             return True
 
     @staticmethod
-    def display_individual_video_file(video_file: imdb_utils.VideoFile):
+    def test_column_mode():
+        display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
+        with curses_gui.ScrollingPanel(rows=display_lines) as scrolling_panel:
+            scrolling_panel.run()
+
+    def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
+        imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
+        imdb_info_list = imdb_utils.parse_imdb_search_results(imdb_search_response)
+
+        display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
+        with curses_gui.ScrollingPanel(rows=display_lines, height=0.5, width=0.5) as imdb_search_results_panel:
+            while True:
+                run_result = imdb_search_results_panel.run()
+                if run_result.key == curses_gui.Keycodes.ESCAPE:
+                    break
+                # elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
+                #     self.update_video_imdb_info(video_file)
+        self.video_files_is_dirty = True
+
+    def display_individual_video_file(self, video_file: imdb_utils.VideoFile):
         json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
         json_str_lines = json_str.splitlines()
         display_lines = ['Search IMDB', curses_gui.HorizontalLine()] + json_str_lines
@@ -46,9 +67,7 @@ class MyMenu(curses_gui.MainMenu):
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     break
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
-                    imdb_search_response = imdb_utils.get_imdb_search_results(video_file)
-                    match_video_files = imdb_utils.parse_imdb_search_results(imdb_search_response, video_file)
-                    pass
+                    self.update_video_imdb_info(video_file)
 
     def display_all_video_file_data(self):
         max_len = -1

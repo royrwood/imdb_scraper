@@ -28,15 +28,10 @@
 import copy
 import curses
 import curses.panel
-import logging
 import os
 import traceback
 from enum import IntEnum, unique
 from typing import List, Tuple, Callable, Union
-
-
-# logging.basicConfig(filename='/tmp/curses_gui.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
-# LOGGER = logging.getLogger('file')
 
 
 # Define some nicer constants for keystrokes
@@ -84,20 +79,23 @@ class Column:
     """
     def __init__(self, text='', colour=CursesColourBinding.COLOUR_WHITE_BLACK, width=None):
         self.text = text
-        self.text_length = len(text)
+        self.text_length = len(text) if text else 0
         self.colour = colour
         self.width = width or self.text_length
 
 
 class Row:
     """An object to represent a row in a ScrollingPanel.
-       The Row may contain a list of Column objects or just a simple text string
+       The Row may contain a list of string or Column objects, or just a simple text string
 
        Examples:
            Row(text='This is a simple line of text')
+           Row(text=['Dog', 'Cow'])
            Row(columns=[Column(text='Dog'), Column(text='Cow'), Column(text='Clarus', width=10)])
     """
     def __init__(self, text='', colour=CursesColourBinding.COLOUR_WHITE_BLACK, columns=None):
+        if isinstance(text, list):
+            columns = [Column(txt) for txt in text]
         self.columns = columns or [Column(text=text, colour=colour)]
 
 
@@ -134,10 +132,12 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row=None, visible=True, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row=None, grid_mode=False, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
+
+        self.grid_mode = grid_mode
 
         self.window = None
         self.panel = None
@@ -154,6 +154,7 @@ class ScrollingPanel:
         self.rows = None
         self.num_rows = 0
         self.rows_max_width = 0
+        self.column_widths = None
         self.header_row = None
         self.num_header_rows = 0
         self.top_visible_row_index = 0
@@ -195,6 +196,8 @@ class ScrollingPanel:
 
         rows_max_width = 0
 
+        self.column_widths = list()
+
         if new_rows:
             for current_row in new_rows:
                 if isinstance(current_row, HorizontalLine):
@@ -206,10 +209,17 @@ class ScrollingPanel:
 
                 rows.append(row)
 
-                row_width = sum(column.width for column in row.columns)
+                row_width = 0
 
-                if row_width > rows_max_width:
-                    rows_max_width = row_width
+                for i, column in enumerate(row.columns):
+                    row_width += column.width
+
+                    if i >= len(self.column_widths):
+                        self.column_widths.append(column.width)
+                    else:
+                        self.column_widths[i] = max(self.column_widths[i], column.width)
+
+                rows_max_width = max(rows_max_width, row_width)
 
         self.rows = rows
         self.num_rows = len(self.rows)
@@ -313,9 +323,6 @@ class ScrollingPanel:
 
         if self.draw_border:
             self.window.border()
-
-        # # TODO: Does this fix it??!?!?
-        # self.window.addstr(0, 0, '*', curses.color_pair(CursesColourBinding.COLOUR_BLACK_YELLOW))
 
         if self.header_row:
             # TODO: Ugh-- we need to render the whole Row, not just the first column!
