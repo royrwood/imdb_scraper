@@ -40,7 +40,7 @@ class MyMenu(curses_gui.MainMenu):
     @staticmethod
     def test_column_mode():
         display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
-        with curses_gui.ScrollingPanel(rows=display_lines) as scrolling_panel:
+        with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
             scrolling_panel.run()
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):

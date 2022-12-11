@@ -132,12 +132,14 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row=None, grid_mode=False, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row=None, grid_mode=False, select_grid_cells=False, inner_padding=False, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
 
         self.grid_mode = grid_mode
+        self.select_grid_cells = select_grid_cells
+        self.inner_padding = inner_padding
 
         self.window = None
         self.panel = None
@@ -153,6 +155,7 @@ class ScrollingPanel:
         self.needs_render = False
         self.rows = None
         self.num_rows = 0
+        self.num_cols = 0
         self.rows_max_width = 0
         self.column_widths = None
         self.header_row = None
@@ -194,10 +197,8 @@ class ScrollingPanel:
     def set_rows(self, new_rows):
         rows = []
 
-        rows_max_width = 0
-
         self.column_widths = list()
-
+        
         if self.header_row:
             for column in self.header_row.columns:
                 self.column_widths.append(column.width)
@@ -213,21 +214,27 @@ class ScrollingPanel:
 
                 rows.append(row)
 
-                row_width = 0
-
                 for i, column in enumerate(row.columns):
-                    row_width += column.width
-
                     if i >= len(self.column_widths):
                         self.column_widths.append(column.width)
                     else:
                         self.column_widths[i] = max(self.column_widths[i], column.width)
 
-                rows_max_width = max(rows_max_width, row_width)
+            self.num_cols = len(self.column_widths)
+
+            if self.inner_padding:
+                for i in range(self.num_cols - 1):
+                    self.column_widths[i] += 1
+
+            if self.grid_mode:
+                for row in rows:
+                    for i, column in enumerate(row.columns):
+                        column.width = self.column_widths[i]
 
         self.rows = rows
         self.num_rows = len(self.rows)
-        self.rows_max_width = rows_max_width
+        self.num_cols = len(self.column_widths)
+        self.rows_max_width = sum(self.column_widths)
         self.needs_render = True
         self.top_visible_row_index = 0
         self.hilighted_row_index = 0
@@ -332,7 +339,7 @@ class ScrollingPanel:
             # TODO: Ugh-- we need to render the whole Row, not just the first column!
             text_colour = self.header_row.columns[0].colour
             raw_text = self.header_row.columns[0].text
-            padded_text = u'{raw_text: <{width}.{width}}'.format(raw_text=raw_text, width=self.content_width)
+            padded_text = u'{raw_text: <{width}}'.format(raw_text=raw_text, width=self.content_width)
             self.window.addstr(1, self.content_left, padded_text, curses.color_pair(text_colour))
 
         for ri in range(0, self.content_height):
@@ -342,7 +349,7 @@ class ScrollingPanel:
             if row_index >= self.num_rows:
                 text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
                 raw_text = ''
-                padded_text = u'{raw_text: <{width}.{width}}'.format(raw_text=raw_text, width=self.content_width)
+                padded_text = u'{raw_text: <{width}}'.format(raw_text=raw_text, width=self.content_width)
                 self.window.addstr(y, self.content_left, padded_text, curses.color_pair(text_colour))
                 continue
 
@@ -367,7 +374,7 @@ class ScrollingPanel:
                     raw_text = raw_text[:self.content_width - 4] + u'...'
                     column_width = len(raw_text)
 
-                if row_index == self.hilighted_row_index and ci == self.hilighted_col_index:
+                if row_index == self.hilighted_row_index and (ci == self.hilighted_col_index or not self.select_grid_cells):
                     text_colour = CursesColourBinding.COLOUR_BLACK_YELLOW
 
                     # If last column of the hilighted row, pad the width out to the max content width
@@ -377,7 +384,7 @@ class ScrollingPanel:
                     # Shouldn't this be column.colour.value?
                     text_colour = column.colour
 
-                padded_text = f'{raw_text: <{column_width}.{column_width}}'
+                padded_text = f'{raw_text: <{column_width}}'
                 x = self.content_left + chars_rendered
                 self.window.addstr(y, x, padded_text, curses.color_pair(text_colour))
                 chars_rendered += column_width
