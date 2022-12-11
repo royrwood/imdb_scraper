@@ -87,17 +87,29 @@ class Column:
 
 class Row:
     """An object to represent a row in a ScrollingPanel.
-       The Row may contain a list of string or Column objects, or just a simple text string
+       The Row may contain a list of string or Column objects
 
        Examples:
-           Row(text='This is a simple line of text')
-           Row(text=['Dog', 'Cow'])
-           Row(columns=[Column(text='Dog'), Column(text='Cow'), Column(text='Clarus', width=10)])
+           Row(row_content='This is a simple line of text')
+           Row(row_content=['Dog', 'Cow'])
+           Row(row_content=[Column('Dog'), Column('Cow'), Column('Clarus', width=10)])
     """
-    def __init__(self, text='', colour=CursesColourBinding.COLOUR_WHITE_BLACK, columns=None):
-        if isinstance(text, list):
-            columns = [Column(txt) for txt in text]
-        self.columns = columns or [Column(text=text, colour=colour)]
+    def __init__(self, row_content=''):
+        if isinstance(row_content, Column):
+            row_content = [row_content]
+        elif isinstance(row_content, str):
+            row_content = [Column(text=row_content)]
+        elif not isinstance(row_content, list):
+            raise Exception('Invalid row_content type %s', type(row_content))
+
+        self.columns = list()
+        for i, rc in enumerate(row_content):
+            if isinstance(rc, Column):
+                self.columns.append(rc)
+            elif isinstance(rc, str):
+                self.columns.append(Column(text=rc))
+            else:
+                raise Exception('Invalid row_content element %d, type %s', i, type(rc))
 
 
 class HorizontalLine(Row):
@@ -211,7 +223,7 @@ class ScrollingPanel:
                 elif isinstance(current_row, Row):
                     row = copy.deepcopy(current_row)
                 else:
-                    row = Row(text=current_row)
+                    row = Row(row_content=current_row)
 
                 rows.append(row)
 

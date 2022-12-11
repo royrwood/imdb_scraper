@@ -62,7 +62,7 @@ class MyMenu(curses_gui.MainMenu):
         header_columns = list()
         header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
         header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
-        header_row = curses_gui.Row(columns=header_columns)
+        header_row = curses_gui.Row(header_columns)
         with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
             scrolling_panel.run()
 
@@ -73,7 +73,7 @@ class MyMenu(curses_gui.MainMenu):
         header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
                           curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
                           curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
-        header_row = curses_gui.Row(columns=header_columns)
+        header_row = curses_gui.Row(header_columns)
         display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
         with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
             while True:
