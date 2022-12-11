@@ -198,6 +198,10 @@ class ScrollingPanel:
 
         self.column_widths = list()
 
+        if self.header_row:
+            for column in self.header_row.columns:
+                self.column_widths.append(column.width)
+
         if new_rows:
             for current_row in new_rows:
                 if isinstance(current_row, HorizontalLine):
