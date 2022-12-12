@@ -44,30 +44,39 @@ class MyMenu(curses_gui.MainMenu):
     #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
     #         scrolling_panel.run()
 
+    # @staticmethod
+    # def test_column_mode():
+    #     import random
+    #     import string
+    #
+    #     display_lines = list()
+    #     for row_i in range(100):
+    #         text_list = list()
+    #         for col_i in range(2):
+    #             text_len = random.randint(5, 15)
+    #             text = ''
+    #             for text_i in range(text_len):
+    #                 text += random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits + '      ')
+    #             text_list.append(text)
+    #         display_lines.append(text_list)
+    #     header_columns = list()
+    #     header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+    #     header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+    #     header_row = curses_gui.Row(header_columns)
+    #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
+    #         scrolling_panel.run()
+
     @staticmethod
     def test_column_mode():
-        import random
-        import string
-
-        display_lines = list()
-        for row_i in range(100):
-            text_list = list()
-            for col_i in range(2):
-                text_len = random.randint(5, 15)
-                text = ''
-                for text_i in range(text_len):
-                    text += random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits + '      ')
-                text_list.append(text)
-            display_lines.append(text_list)
-        header_columns = list()
-        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
-        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
-        header_row = curses_gui.Row(header_columns)
-        with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
+        header_row = curses_gui.Row('This is a dialog box, sort of')
+        button_row = curses_gui.Row(['OK', 'Cancel'])
+        display_lines = []
+        with curses_gui.ScrollingPanel(rows=[button_row], grid_mode=True, inner_padding=True, header_row=header_row, select_grid_cells=True) as scrolling_panel:
             scrolling_panel.run()
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
-        imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
+        with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
+            imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
         imdb_info_list = imdb_utils.parse_imdb_search_results(imdb_search_response)
 
         header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),

@@ -94,7 +94,7 @@ class Row:
            Row(row_content=['Dog', 'Cow'])
            Row(row_content=[Column('Dog'), Column('Cow'), Column('Clarus', width=10)])
     """
-    def __init__(self, row_content=''):
+    def __init__(self, row_content: Union[str, List] = ''):
         if isinstance(row_content, Column):
             row_content = [row_content]
         elif isinstance(row_content, str):
@@ -115,8 +115,8 @@ class Row:
 class HorizontalLine(Row):
     """A row of this type will be rendered as a horizontal line.
     """
-    def __init__(self, colour=CursesColourBinding.COLOUR_WHITE_BLACK):
-        super(HorizontalLine, self).__init__(colour=colour)
+    def __init__(self):
+        super(HorizontalLine, self).__init__()
 
 
 class ScrollPanelRunResult:
@@ -201,7 +201,7 @@ class ScrollingPanel:
             self.header_row = copy.deepcopy(header_row)
             self.num_header_rows = 1
         elif header_row:
-            self.header_row = Row(columns=[Column(text=header_row)])
+            self.header_row = Row([Column(header_row)])
             self.num_header_rows = 1
         else:
             self.header_row = None
@@ -535,6 +535,8 @@ class MessagePanel:
 
         if message_lines is None:
             message_lines = list()
+        elif isinstance(message_lines, str):
+            message_lines = [message_lines]
 
         self.set_message_lines(message_lines)
         self.show()
