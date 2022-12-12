@@ -817,8 +817,8 @@ class DialogBox:
     def __init__(self, prompt=None, buttons_text=None):
         self.window = None
         self.panel = None
-
         self.needs_render = True
+
         self.prompt_rows = None
         self.num_prompt_rows = 0
         self.buttons_text = None
@@ -855,16 +855,14 @@ class DialogBox:
         self.content_width = self.button_text_width
 
         if isinstance(prompt, list):
-            self.prompt_rows = [Row(p) for p in prompt]
+            self.prompt_rows = [p if isinstance(p, Row) else Row(p) for p in prompt]
         else:
-            self.prompt_rows = Row(prompt)
+            self.prompt_rows = [prompt if isinstance(prompt, Row) else Row(prompt)]
         self.num_prompt_rows = len(self.prompt_rows)
         self.content_height = self.num_prompt_rows + 2
 
         for row_i, row in enumerate(self.prompt_rows):  # type: int, Row
-            row_width = 0
-            for col_i, col in enumerate(row.columns):  # type: int, Column
-                row_width = max(row_width, col.width)
+            row_width = sum(col.width for col in row.columns)
             self.content_width = max(self.content_width, row_width)
 
     def hide(self):
