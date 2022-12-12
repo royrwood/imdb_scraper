@@ -96,7 +96,7 @@ class Row:
     """
     def __init__(self, row_content: Union[str, List] = ''):
         if isinstance(row_content, Column):
-            row_content = [row_content]
+            row_content = [copy.deepcopy(row_content)]
         elif isinstance(row_content, str):
             row_content = [Column(text=row_content)]
         elif not isinstance(row_content, list):
@@ -105,11 +105,31 @@ class Row:
         self.columns = list()
         for i, rc in enumerate(row_content):
             if isinstance(rc, Column):
-                self.columns.append(rc)
+                self.columns.append(copy.deepcopy(rc))
             elif isinstance(rc, str):
                 self.columns.append(Column(text=rc))
             else:
                 raise Exception('Invalid row_content element %d, type %s', i, type(rc))
+
+    # @staticmethod
+    # def convert_to_row_of_columns(row_input: Union[str, List]) -> List:
+    #     if isinstance(row_input, str):
+    #         output_rows = [Row(row_input)]
+    #     elif isinstance(row_input, Row):
+    #         output_rows = [copy.deepcopy(row_input)]
+    #     elif isinstance(row_input, list):
+    #         output_rows = list()
+    #         for i, p in enumerate(row_input):
+    #             if isinstance(p, str):
+    #                 output_rows.append(Row(row_input))
+    #             elif isinstance(p, Row):
+    #                 output_rows.append(copy.deepcopy(row_input))
+    #             else:
+    #                 raise Exception('Invalid rows element %d, type %s', i, type(p))
+    #     else:
+    #         raise Exception('Invalid row type %s', type(row_input))
+    #
+    #     return output_rows
 
 
 class HorizontalLine(Row):
@@ -791,6 +811,125 @@ class InputPanel:
                 return self.input_text
             else:
                 self.handle_keystroke(key)
+
+
+class DialogBox:
+    def __init__(self, prompt=None, buttons_text=None):
+        self.window = None
+        self.panel = None
+
+        self.needs_render = True
+        self.prompt_rows = None
+        self.num_prompt_rows = 0
+        self.buttons_text = None
+        self.num_buttons = 0
+        self.button_text_width = 0
+        self.content_width = 0
+        self.content_height = 0
+        self.hilighted_button_index = 0
+
+        self.set_prompt_and_buttons(prompt, buttons_text)
+
+        stdscr_height, stdscr_width = CURSES_STDSCR.getmaxyx()
+
+        self.top = (stdscr_height - 2) // 2
+        self.left = (stdscr_width - self.content_width) // 2
+        self.width = self.content_width + 4  # Leave a blank space at the left/right, and also account for the border
+        self.height = self.content_height + 2  # Leave a blank space at the top/bottom, and also account for the border
+
+        self.window = curses.newwin(self.height, self.width, self.top, self.left)
+        self.window.keypad(True)
+        self.panel = curses.panel.new_panel(self.window)
+        self.panel.hide()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        self.hide()
+
+    def set_prompt_and_buttons(self, prompt, buttons_text):
+        self.buttons_text = [f' {b} ' for b in buttons_text]
+        self.num_buttons = len(self.buttons_text)
+        self.button_text_width = sum(len(b) for b in self.buttons_text)
+        self.content_width = self.button_text_width
+
+        if isinstance(prompt, list):
+            self.prompt_rows = [Row(p) for p in prompt]
+        else:
+            self.prompt_rows = Row(prompt)
+        self.num_prompt_rows = len(self.prompt_rows)
+        self.content_height = self.num_prompt_rows + 2
+
+        for row_i, row in enumerate(self.prompt_rows):  # type: int, Row
+            row_width = 0
+            for col_i, col in enumerate(row.columns):  # type: int, Column
+                row_width = max(row_width, col.width)
+            self.content_width = max(self.content_width, row_width)
+
+    def hide(self):
+        if self.panel:
+            self.panel.hide()
+            curses.panel.update_panels()
+            CURSES_STDSCR.refresh()
+
+    def show(self):
+        if self.panel:
+            self.render()
+            self.panel.show()
+            curses.panel.update_panels()
+            CURSES_STDSCR.refresh()
+
+    def render(self, force=False):
+        if not (force or self.needs_render):
+            return
+
+        self.window.erase()
+        self.window.border()
+
+        for row_i, row in enumerate(self.prompt_rows):  # type: int, Row
+            x = 2
+            for col_i, col in enumerate(row.columns):  # type: int, Column
+                text = col.text
+                text_colour = col.colour
+
+                if len(text) > self.content_width:
+                    text = text[:self.content_width - 4] + u'...'
+
+                self.window.addstr(1 + row_i, x, text, curses.color_pair(text_colour))
+                x += len(text)
+
+        x = 2 + self.content_width - self.button_text_width
+        for i, button_text in enumerate(self.buttons_text):
+            if i == self.hilighted_button_index:
+                text_colour = CursesColourBinding.COLOUR_BLACK_YELLOW
+            else:
+                text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
+
+            self.window.addstr(1 + self.num_prompt_rows + 1, x, button_text, curses.color_pair(text_colour))
+            x += len(button_text)
+
+        self.needs_render = False
+
+    def run(self):
+        self.show()
+
+        while True:
+            self.render()
+            curses.panel.update_panels()
+            CURSES_STDSCR.refresh()
+
+            key = self.window.getch()
+            if key == curses.KEY_LEFT and self.hilighted_button_index > 0:
+                self.hilighted_button_index -= 1
+                self.needs_render = True
+            elif key == curses.KEY_RIGHT and self.hilighted_button_index < self.num_buttons - 1:
+                self.hilighted_button_index += 1
+                self.needs_render = True
+            elif key == Keycodes.ESCAPE:
+                return None
+            elif key == Keycodes.RETURN:
+                return self.hilighted_button_index
 
 
 class MainMenu(ScrollingPanel):

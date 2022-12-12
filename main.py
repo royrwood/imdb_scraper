@@ -66,13 +66,21 @@ class MyMenu(curses_gui.MainMenu):
     #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
     #         scrolling_panel.run()
 
+    # @staticmethod
+    # def test_column_mode():
+    #     header_row = curses_gui.Row('This is a dialog box, sort of')
+    #     button_row = curses_gui.Row(['OK', 'Cancel'])
+    #     display_lines = []
+    #     with curses_gui.ScrollingPanel(rows=[button_row], grid_mode=True, inner_padding=True, header_row=header_row, select_grid_cells=True) as scrolling_panel:
+    #         scrolling_panel.run()
+
     @staticmethod
     def test_column_mode():
         header_row = curses_gui.Row('This is a dialog box, sort of')
         button_row = curses_gui.Row(['OK', 'Cancel'])
         display_lines = []
-        with curses_gui.ScrollingPanel(rows=[button_row], grid_mode=True, inner_padding=True, header_row=header_row, select_grid_cells=True) as scrolling_panel:
-            scrolling_panel.run()
+        with curses_gui.DialogBox(prompt=['Line 1', 'Line 22222222222222222222222222222222222'], buttons_text=['OK', 'Cancel']) as dialog_box:
+            dialog_box.run()
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
