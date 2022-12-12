@@ -25,7 +25,6 @@
 #     console_gui_main(MyMenu)
 
 
-import copy
 import curses
 import curses.panel
 import logging
@@ -96,40 +95,20 @@ class Row:
     """
     def __init__(self, row_content: Union[str, List] = ''):
         if isinstance(row_content, Column):
-            row_content = [copy.deepcopy(row_content)]
+            self.columns = [row_content]
         elif isinstance(row_content, str):
-            row_content = [Column(text=row_content)]
-        elif not isinstance(row_content, list):
+            self.columns = [Column(text=row_content)]
+        elif isinstance(row_content, list):
+            self.columns = list()
+            for i, rc in enumerate(row_content):
+                if isinstance(rc, Column):
+                    self.columns.append(rc)
+                elif isinstance(rc, str):
+                    self.columns.append(Column(text=rc))
+                else:
+                    raise Exception('Invalid row_content element %d, type %s', i, type(rc))
+        else:
             raise Exception('Invalid row_content type %s', type(row_content))
-
-        self.columns = list()
-        for i, rc in enumerate(row_content):
-            if isinstance(rc, Column):
-                self.columns.append(copy.deepcopy(rc))
-            elif isinstance(rc, str):
-                self.columns.append(Column(text=rc))
-            else:
-                raise Exception('Invalid row_content element %d, type %s', i, type(rc))
-
-    # @staticmethod
-    # def convert_to_row_of_columns(row_input: Union[str, List]) -> List:
-    #     if isinstance(row_input, str):
-    #         output_rows = [Row(row_input)]
-    #     elif isinstance(row_input, Row):
-    #         output_rows = [copy.deepcopy(row_input)]
-    #     elif isinstance(row_input, list):
-    #         output_rows = list()
-    #         for i, p in enumerate(row_input):
-    #             if isinstance(p, str):
-    #                 output_rows.append(Row(row_input))
-    #             elif isinstance(p, Row):
-    #                 output_rows.append(copy.deepcopy(row_input))
-    #             else:
-    #                 raise Exception('Invalid rows element %d, type %s', i, type(p))
-    #     else:
-    #         raise Exception('Invalid row type %s', type(row_input))
-    #
-    #     return output_rows
 
 
 class HorizontalLine(Row):
@@ -218,7 +197,7 @@ class ScrollingPanel:
 
     def set_header(self, header_row):
         if type(header_row) is Row:
-            self.header_row = copy.deepcopy(header_row)
+            self.header_row = header_row
             self.num_header_rows = 1
         elif header_row:
             self.header_row = Row([Column(header_row)])
@@ -239,9 +218,9 @@ class ScrollingPanel:
         if new_rows:
             for current_row in new_rows:
                 if isinstance(current_row, HorizontalLine):
-                    row = copy.deepcopy(current_row)
+                    row = current_row
                 elif isinstance(current_row, Row):
-                    row = copy.deepcopy(current_row)
+                    row = current_row
                 else:
                     row = Row(row_content=current_row)
 
