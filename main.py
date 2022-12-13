@@ -7,6 +7,8 @@ import logging
 import os
 import json
 import math
+import threading
+import time
 from typing import List, Optional
 
 import imdb_scraper.imdb_utils
@@ -69,19 +71,47 @@ class MyMenu(curses_gui.MainMenu):
 
     @staticmethod
     def test_column_mode():
+        class MyThread(threading.Thread):
+            def __init__(self):
+                super().__init__(daemon=True)
+                self.keep_going = True
+                self.imdb_search_response = None
+
+            def run(self) -> None:
+                # while self.keep_going:
+                #     time.sleep(1.0)
+
+                logging.info('Fetching IMDB info...')
+                self.imdb_search_response = imdb_utils.get_imdb_search_results('21 jump street')
+                logging.info('Fetched IMDB info...')
+
+                logging.info('MyThread exit.')
+
         logging.info('Creating DialogBox')
-        time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
         with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
+            logging.info('Creating MyThread')
+            my_thread = MyThread()
+            logging.info('Starting MyThread')
+            my_thread.start()
+
             while True:
                 logging.info('Calling DialogBox.run')
-                result = dialog_box.run(key_timeout_msec=500)
+                result = dialog_box.run(key_timeout_msec=100)
                 logging.info('DialogBox result = %s', result)
                 if result == -1:
                     logging.info('User pressed Keycodes.ESCAPE')
                     break
                 else:
-                    time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+                    time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
                     dialog_box.set_prompt(time_str)
+
+                if my_thread.imdb_search_response:
+                    logging.info('MyThread got the IMDB data')
+                    break
+
+            logging.info('Stopping MyThread')
+            my_thread.keep_going = False
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:

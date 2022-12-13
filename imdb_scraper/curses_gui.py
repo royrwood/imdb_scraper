@@ -832,6 +832,8 @@ class DialogBox:
         self.hide()
 
     def set_prompt(self, prompt):
+        # TODO: Resize window if necessary!
+
         if isinstance(prompt, list):
             self.prompt_rows = [p if isinstance(p, Row) else Row(p) for p in prompt]
         else:
@@ -846,6 +848,8 @@ class DialogBox:
         self.needs_render = True
 
     def set_prompt_and_buttons(self, prompt, buttons_text):
+        # TODO: Resize window if necessary!
+
         self.buttons_text = [f' {b} ' for b in buttons_text]
         self.num_buttons = len(self.buttons_text)
         self.button_text_width = sum(len(b) for b in self.buttons_text)
