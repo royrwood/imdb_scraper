@@ -476,6 +476,7 @@ class ScrollingPanel:
 
     def run(self, stop_key_list: List[Keycodes] = None) -> ScrollPanelRunResult:
         self.show()
+        self.window.timeout(-1)
 
         if stop_key_list is None:
             stop_key_list = [Keycodes.ESCAPE, Keycodes.RETURN]
@@ -647,6 +648,7 @@ class MessagePanel:
 
     def run(self):
         self.show()
+        self.window.timeout(-1)
 
         while True:
             key = self.window.getch()
@@ -777,6 +779,7 @@ class InputPanel:
 
     def run(self):
         self.show()
+        self.window.timeout(-1)
 
         while True:
             self.render()
@@ -889,11 +892,10 @@ class DialogBox:
 
         self.needs_render = False
 
-    def run(self, key_timeout_msec=0):
+    def run(self, key_timeout_msec=-1):
         self.show()
 
-        if key_timeout_msec:
-            self.window.timeout(key_timeout_msec)
+        self.window.timeout(key_timeout_msec)
 
         while True:
             self.render()
@@ -902,6 +904,7 @@ class DialogBox:
 
             key = self.window.getch()
             if key_timeout_msec and key == -1:
+                self.window.timeout(-1)
                 return None
 
             if key == curses.KEY_LEFT and self.hilighted_button_index > 0:
@@ -911,8 +914,10 @@ class DialogBox:
                 self.hilighted_button_index += 1
                 self.needs_render = True
             elif key == Keycodes.ESCAPE:
+                self.window.timeout(-1)
                 return -1
             elif key == Keycodes.RETURN:
+                self.window.timeout(-1)
                 return self.hilighted_button_index
 
 
@@ -946,6 +951,7 @@ class MainMenu(ScrollingPanel):
 
             CURSES_STDSCR.refresh()
 
+            self.window.timeout(-1)
             key = self.window.getch()
 
             if key == Keycodes.ESCAPE:
