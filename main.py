@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import dataclasses
+import datetime
 import logging
 import os
 import json
@@ -69,7 +70,8 @@ class MyMenu(curses_gui.MainMenu):
     @staticmethod
     def test_column_mode():
         logging.info('Creating DialogBox')
-        with curses_gui.DialogBox(prompt=['Line 1', 'Line 2'], buttons_text=['OK', 'Cancel']) as dialog_box:
+        time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
             while True:
                 logging.info('Calling DialogBox.run')
                 result = dialog_box.run(key_timeout_msec=500)
@@ -77,6 +79,9 @@ class MyMenu(curses_gui.MainMenu):
                 if result == -1:
                     logging.info('User pressed Keycodes.ESCAPE')
                     break
+                else:
+                    time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+                    dialog_box.set_prompt(time_str)
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:

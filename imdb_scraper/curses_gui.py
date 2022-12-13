@@ -831,12 +831,7 @@ class DialogBox:
     def __exit__(self, _type, _value, _traceback):
         self.hide()
 
-    def set_prompt_and_buttons(self, prompt, buttons_text):
-        self.buttons_text = [f' {b} ' for b in buttons_text]
-        self.num_buttons = len(self.buttons_text)
-        self.button_text_width = sum(len(b) for b in self.buttons_text)
-        self.content_width = self.button_text_width
-
+    def set_prompt(self, prompt):
         if isinstance(prompt, list):
             self.prompt_rows = [p if isinstance(p, Row) else Row(p) for p in prompt]
         else:
@@ -847,6 +842,16 @@ class DialogBox:
         for row_i, row in enumerate(self.prompt_rows):
             row_width = sum(col.width for col in row.columns)
             self.content_width = max(self.content_width, row_width)
+        
+        self.needs_render = True
+
+    def set_prompt_and_buttons(self, prompt, buttons_text):
+        self.buttons_text = [f' {b} ' for b in buttons_text]
+        self.num_buttons = len(self.buttons_text)
+        self.button_text_width = sum(len(b) for b in self.buttons_text)
+        self.content_width = self.button_text_width
+
+        self.set_prompt(prompt)
 
     def hide(self):
         if self.panel:
