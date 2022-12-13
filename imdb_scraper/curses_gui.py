@@ -77,7 +77,7 @@ class Column:
     """An object to represent a column/field in a row in a ScrollingPanel.
        If the column width is not specified, it defaults to the length of the text.
     """
-    def __init__(self, text='', colour=CursesColourBinding.COLOUR_WHITE_BLACK, width=None):
+    def __init__(self, text: str = '', colour: CursesColourBinding = CursesColourBinding.COLOUR_WHITE_BLACK, width: Optional[int] = None):
         self.text = text
         self.text_length = len(text) if text else 0
         self.colour = colour
@@ -93,7 +93,7 @@ class Row:
            Row(row_content=['Dog', 'Cow'])
            Row(row_content=[Column('Dog'), Column('Cow'), Column('Clarus', width=10)])
     """
-    def __init__(self, row_content: Union[str, List] = ''):
+    def __init__(self, row_content: Union[str, Column, List[str], List[Column]] = ''):
         if isinstance(row_content, Column):
             self.columns = [row_content]
         elif isinstance(row_content, str):
@@ -122,10 +122,10 @@ class ScrollPanelRunResult:
     """When a ScrollPanel exits (e.g. user presses return or escape), an object of this type is returned.
     """
     def __init__(self, row_index, col_index, text, key):
-        self.row_index = row_index
-        self.col_index = col_index
-        self.text = text
-        self.key = key
+        self.row_index: int = row_index
+        self.col_index: int = col_index
+        self.text: str = text
+        self.key: str = key
 
 
 class ScrollingPanel:
@@ -378,9 +378,10 @@ class ScrollingPanel:
             if isinstance(row, HorizontalLine):
                 x = self.content_left
                 y = self.content_top + ri
+                text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
                 if row_index == self.hilighted_row_index:
                     text_colour = CursesColourBinding.COLOUR_BLACK_YELLOW
-                else:
+                elif len(row.columns) > 0:
                     text_colour = row.columns[0].colour
                 self.window.hline(y, x, curses.ACS_HLINE, self.content_width, curses.color_pair(text_colour))
                 continue
@@ -514,7 +515,7 @@ class MessagePanel:
        The message_lines can be a list of str/unicode or tuples of (str/unicode, colour) like this:
            message_panel = MessagePanel([('Exception occurred:', CursesColourBinding.COLOUR_BLACK_RED), ''])
     """
-    def __init__(self, message_lines=None):
+    def __init__(self, message_lines: Union[str, List[str], Tuple[str, CursesColourBinding], List[Tuple[str, CursesColourBinding]]] = ''):
         self.window = None
         self.panel = None
         self.message_lines = []
@@ -558,7 +559,7 @@ class MessagePanel:
         self.set_message_lines(new_message_lines)
 
     def set_message_lines(self, new_message_lines):
-        self.message_lines = new_message_lines[:]
+        self.message_lines = new_message_lines
         self.num_rows = len(self.message_lines)
         self.rows_max_width = 0
 
@@ -661,7 +662,7 @@ class MessagePanel:
 class InputPanel:
     """Similar to the ScrollingPanel, but handles user input.
     """
-    def __init__(self, prompt='', default_value=u'', entry_width=None, allowed_input_chars=None):
+    def __init__(self, prompt: str = '', default_value: str = '', entry_width: Optional[int] = None, allowed_input_chars: Optional[str] = None):
         self.prompt = prompt
         self.prompt_width = len(self.prompt)
         self.num_rows = 1
@@ -793,14 +794,14 @@ class InputPanel:
 
 
 class DialogBox:
-    def __init__(self, prompt=None, buttons_text=None):
+    def __init__(self, prompt: Union[Row, List[Row], List[str]], buttons_text: List[str]):
         self.window = None
         self.panel = None
         self.needs_render = True
 
-        self.prompt_rows = None
+        self.prompt_rows: Optional[List[Row]] = None
         self.num_prompt_rows = 0
-        self.buttons_text = None
+        self.buttons_text: Optional[List[str]] = None
         self.num_buttons = 0
         self.button_text_width = 0
         self.content_width = 0
@@ -840,7 +841,7 @@ class DialogBox:
         self.num_prompt_rows = len(self.prompt_rows)
         self.content_height = self.num_prompt_rows + 2
 
-        for row_i, row in enumerate(self.prompt_rows):  # type: int, Row
+        for row_i, row in enumerate(self.prompt_rows):
             row_width = sum(col.width for col in row.columns)
             self.content_width = max(self.content_width, row_width)
 
@@ -888,8 +889,11 @@ class DialogBox:
 
         self.needs_render = False
 
-    def run(self):
+    def run(self, key_timeout_msec=0):
         self.show()
+
+        if key_timeout_msec:
+            self.window.timeout(key_timeout_msec)
 
         while True:
             self.render()
@@ -897,6 +901,9 @@ class DialogBox:
             CURSES_STDSCR.refresh()
 
             key = self.window.getch()
+            if key_timeout_msec and key == -1:
+                return None
+
             if key == curses.KEY_LEFT and self.hilighted_button_index > 0:
                 self.hilighted_button_index -= 1
                 self.needs_render = True
@@ -904,7 +911,7 @@ class DialogBox:
                 self.hilighted_button_index += 1
                 self.needs_render = True
             elif key == Keycodes.ESCAPE:
-                return None
+                return -1
             elif key == Keycodes.RETURN:
                 return self.hilighted_button_index
 
@@ -973,7 +980,7 @@ def interactive_main(stdscr: CursesStdscrType, main_menu_cls: type) -> None:
     global CURSES_STDSCR
     CURSES_STDSCR = stdscr
 
-    # # Figure out what the preferred locale encoding is so we can use that when asking curses to render unicode strings
+    # # Figure out what the preferred locale encoding is and use that when asking curses to render unicode strings
     # locale.setlocale(locale.LC_ALL, '')
     #
     # global PREFERRED_ENCODING

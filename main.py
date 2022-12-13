@@ -68,9 +68,15 @@ class MyMenu(curses_gui.MainMenu):
 
     @staticmethod
     def test_column_mode():
+        logging.info('Creating DialogBox')
         with curses_gui.DialogBox(prompt=['Line 1', 'Line 2'], buttons_text=['OK', 'Cancel']) as dialog_box:
-            result = dialog_box.run()
-            logging.info('DialogBox result = %s', result)
+            while True:
+                logging.info('Calling DialogBox.run')
+                result = dialog_box.run(key_timeout_msec=500)
+                logging.info('DialogBox result = %s', result)
+                if result == curses_gui.Keycodes.ESCAPE:
+                    logging.info('Got Keycodes.ESCAPE')
+                    break
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
@@ -199,6 +205,7 @@ class MyMenu(curses_gui.MainMenu):
 # For Pycharm "Attach to Process" execute: sudo sysctl kernel.yama.ptrace_scope=0
 
 if __name__ == '__main__':
+
     logging.basicConfig(filename='/tmp/imdb_scraper.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
 
     logging.info('Starting up...')
