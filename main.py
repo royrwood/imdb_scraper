@@ -74,8 +74,8 @@ class MyMenu(curses_gui.MainMenu):
                 logging.info('Calling DialogBox.run')
                 result = dialog_box.run(key_timeout_msec=500)
                 logging.info('DialogBox result = %s', result)
-                if result == curses_gui.Keycodes.ESCAPE:
-                    logging.info('Got Keycodes.ESCAPE')
+                if result == -1:
+                    logging.info('User pressed Keycodes.ESCAPE')
                     break
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
