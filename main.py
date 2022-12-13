@@ -113,6 +113,19 @@ class MyMenu(curses_gui.MainMenu):
             logging.info('Stopping MyThread')
             my_thread.keep_going = False
 
+            imdb_info_list = imdb_utils.parse_imdb_search_results(my_thread.imdb_search_response)
+
+            header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
+                              curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
+                              curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
+            header_row = curses_gui.Row(header_columns)
+            display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
+            with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
+                while True:
+                    run_result = imdb_search_results_panel.run()
+                    if run_result.key == curses_gui.Keycodes.ESCAPE:
+                        break
+
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
             imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
