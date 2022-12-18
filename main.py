@@ -78,12 +78,9 @@ class MyMenu(curses_gui.MainMenu):
                 self.imdb_search_response = None
 
             def run(self) -> None:
-                # while self.keep_going:
-                #     time.sleep(1.0)
-
                 logging.info('Fetching IMDB info...')
                 self.imdb_search_response = imdb_utils.get_imdb_search_results('21 jump street')
-                logging.info('Fetched IMDB info...')
+                logging.info('Fetched IMDB info')
 
                 logging.info('MyThread exit.')
 
@@ -203,11 +200,11 @@ class MyMenu(curses_gui.MainMenu):
                     json_list = [dataclasses.asdict(video_file) for video_file in self.video_files]
                     json_str = json.dumps(json_list, indent=4)
                     f.write(json_str)
-                final_message = f'Video saved to {video_file_path}'
+                final_message = f'Video saved to "{video_file_path}"'
                 self.video_files_is_dirty = False
 
-        with curses_gui.MessagePanel([final_message]) as message_panel:
-            message_panel.run()
+        with curses_gui.DialogBox(prompt=[final_message], buttons_text=['OK']) as dialog_box:
+            dialog_box.run()
 
     def load_video_file_data(self):
         with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value=self.video_file_path) as input_panel:
@@ -227,8 +224,8 @@ class MyMenu(curses_gui.MainMenu):
             video_file = imdb_utils.VideoFile(**video_file_dict)
             self.video_files.append(video_file)
 
-        with curses_gui.MessagePanel([f'Loaded video file date from {self.video_file_path}']) as message_panel:
-            message_panel.run()
+        with curses_gui.DialogBox(prompt=[f'Loaded video file date from "{self.video_file_path}"'], buttons_text=['OK']) as dialog_box:
+            dialog_box.run()
 
     def scan_video_folder(self):
         with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/media/rrwood/Seagate Expansion Drive/Videos/') as input_panel:
@@ -253,7 +250,6 @@ class MyMenu(curses_gui.MainMenu):
 # For Pycharm "Attach to Process" execute: sudo sysctl kernel.yama.ptrace_scope=0
 
 if __name__ == '__main__':
-
     logging.basicConfig(filename='/tmp/imdb_scraper.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
 
     logging.info('Starting up...')
