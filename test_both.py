@@ -73,28 +73,28 @@ if process_id:
     with raw(sys.stdin):
         keep_going = True
         read_buffer = ''
+        print('PARENT: Waiting for data')
         while keep_going:
-            print('PARENT: Waiting for data')
             events = sel.select(0.5)
             for selector_key, event_mask in events:
                 if selector_key.data == 'PIPE':
                     print('PARENT: Reading r_file')
                     text = r_file.read()
-                    print(f'PARENT: Read {len(text)} bytes')
+                    print(f'PARENT: Read {len(text)} bytes from r_file')
                     if not text:
                         keep_going = False
                     read_buffer += text
                     if '\n' in read_buffer:
                         newline_i = read_buffer.find('\n')
                         read_message = read_buffer[:newline_i]
-                        print(f'PARENT: Read message "{read_message}"')
+                        print(f'PARENT: Read message "{read_message}" from r_file')
                         read_buffer = read_buffer[newline_i + 1:]
                         # keep_going = False
                 elif selector_key.data == 'STDIN':
                     char = sys.stdin.read(1)
-                    print(f'Read char "{repr(char)}"')
+                    print(f'PARENT: Read char {repr(char)} from stdin')
                 else:
-                    print(f'Unknown selector key.data')
+                    print(f'PARENT: Unknown selector key.data')
 
     sel.unregister(r_file)
     sel.close()
