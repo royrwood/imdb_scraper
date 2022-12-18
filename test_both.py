@@ -46,12 +46,13 @@ if process_id:
     os.close(w_fd)
 
     print('PARENT: Opening r_file')
-    fcntl.fcntl(r_fd, fcntl.F_SETFL, os.O_NONBLOCK)
-    r_file = os.fdopen(r_fd, 'r')
+    # fcntl.fcntl(r_fd, fcntl.F_SETFL, os.O_NONBLOCK)
+    # r_file = os.fdopen(r_fd, 'r')
 
     print('PARENT: Creating selector')
     sel = selectors.DefaultSelector()
-    sel.register(r_file, selectors.EVENT_READ, 'PIPE')
+    # sel.register(r_file, selectors.EVENT_READ, 'PIPE')
+    sel.register(r_fd, selectors.EVENT_READ, 'PIPE')
     sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
 
     # with raw(sys.stdin):
@@ -79,11 +80,12 @@ if process_id:
             for selector_key, event_mask in events:
                 if selector_key.data == 'PIPE':
                     print('PARENT: Reading r_file')
-                    text = r_file.read()
-                    print(f'PARENT: Read {len(text)} bytes from r_file')
+                    text = os.read(r_fd, 1024)
+                    # text = r_file.read()
+                    print(f'PARENT: Read {len(text)} bytes from r_file ({repr(text)})')
                     if not text:
                         keep_going = False
-                    read_buffer += text
+                    read_buffer += text.decode('ascii')
                     if '\n' in read_buffer:
                         newline_i = read_buffer.find('\n')
                         read_message = read_buffer[:newline_i]
@@ -96,7 +98,8 @@ if process_id:
                 else:
                     print(f'PARENT: Unknown selector key.data')
 
-    sel.unregister(r_file)
+    # sel.unregister(r_file)
+    sel.unregister(r_fd)
     sel.close()
 
     print('PARENT: Exiting')
@@ -106,25 +109,36 @@ else:
     print('CHILD: Closing r_fd')
     os.close(r_fd)
 
-    print('CHILD: Opening w_file')
-    w_file = os.fdopen(w_fd, 'w')
     print('CHILD: Sleeping')
     time.sleep(2)
-    print('CHILD: Writing w_file')
-    w_file.write('CHILD\n')
-    w_file.flush()
+    print('CHILD: Writing w_fd')
+    os.write(w_fd, bytes('CHILD\n', 'ascii'))
     time.sleep(2)
-    print('CHILD: Writing w_file')
-    w_file.write('SAYS\n')
-    w_file.flush()
+    print('CHILD: Writing w_fd')
+    os.write(w_fd, bytes('SAYS\n', 'ascii'))
     time.sleep(2)
-    print('CHILD: Writing w_file')
-    w_file.write('HELLO\n')
-    w_file.flush()
+    print('CHILD: Writing w_fd')
+    os.write(w_fd, bytes('HELLO\n', 'ascii'))
+    print('CHILD: Closing w_fd')
+    os.close(w_fd)
 
-    print('CHILD: Closing w_file')
-    w_file.close()
-    print('CHILD: Sleeping')
-    time.sleep(2)
+    # print('CHILD: Opening w_file')
+    # w_file = os.fdopen(w_fd, 'w')
+    # print('CHILD: Sleeping')
+    # time.sleep(2)
+    # print('CHILD: Writing w_file')
+    # w_file.write('CHILD\n')
+    # w_file.flush()
+    # time.sleep(2)
+    # print('CHILD: Writing w_file')
+    # w_file.write('SAYS\n')
+    # w_file.flush()
+    # time.sleep(2)
+    # print('CHILD: Writing w_file')
+    # w_file.write('HELLO\n')
+    # w_file.flush()
+    # print('CHILD: Closing w_file')
+    # w_file.close()
+    #
     print('CHILD: Exiting')
     sys.exit(0)
