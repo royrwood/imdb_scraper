@@ -831,7 +831,7 @@ class DialogBox:
     def __exit__(self, _type, _value, _traceback):
         self.hide()
 
-    def set_prompt(self, prompt):
+    def set_prompt(self, prompt, refresh=False):
         # TODO: Resize window if necessary!
 
         if isinstance(prompt, list):
@@ -844,8 +844,13 @@ class DialogBox:
         for row_i, row in enumerate(self.prompt_rows):
             row_width = sum(col.width for col in row.columns)
             self.content_width = max(self.content_width, row_width)
-        
+
         self.needs_render = True
+
+        if refresh:
+            self.render()
+            curses.panel.update_panels()
+            CURSES_STDSCR.refresh()
 
     def set_prompt_and_buttons(self, prompt, buttons_text):
         # TODO: Resize window if necessary!

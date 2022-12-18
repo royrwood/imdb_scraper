@@ -7,6 +7,7 @@ import logging
 import os
 import json
 import math
+import selectors
 import threading
 import time
 from typing import List, Optional
@@ -69,59 +70,128 @@ class MyMenu(curses_gui.MainMenu):
     #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
     #         scrolling_panel.run()
 
+    # @staticmethod
+    # def test_column_mode():
+    #     class MyThread(threading.Thread):
+    #         def __init__(self):
+    #             super().__init__(daemon=True)
+    #             self.keep_going = True
+    #             self.imdb_search_response = None
+    #
+    #         def run(self) -> None:
+    #             logging.info('Fetching IMDB info...')
+    #             self.imdb_search_response = imdb_utils.get_imdb_search_results('21 jump street')
+    #             logging.info('Fetched IMDB info')
+    #
+    #             logging.info('MyThread exit.')
+    #
+    #     logging.info('Creating DialogBox')
+    #     time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
+    #     with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
+    #         logging.info('Creating MyThread')
+    #         my_thread = MyThread()
+    #         logging.info('Starting MyThread')
+    #         my_thread.start()
+    #
+    #         while True:
+    #             logging.info('Calling DialogBox.run')
+    #             result = dialog_box.run(key_timeout_msec=100)
+    #             logging.info('DialogBox result = %s', result)
+    #             if result == -1:
+    #                 logging.info('User pressed Keycodes.ESCAPE')
+    #                 break
+    #             else:
+    #                 time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
+    #                 dialog_box.set_prompt(time_str)
+    #
+    #             if my_thread.imdb_search_response:
+    #                 logging.info('MyThread got the IMDB data')
+    #                 break
+    #
+    #         logging.info('Stopping MyThread')
+    #         my_thread.keep_going = False
+    #
+    #         imdb_info_list = imdb_utils.parse_imdb_search_results(my_thread.imdb_search_response)
+    #
+    #         header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
+    #                           curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
+    #                           curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
+    #         header_row = curses_gui.Row(header_columns)
+    #         display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
+    #         with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
+    #             while True:
+    #                 run_result = imdb_search_results_panel.run()
+    #                 if run_result.key == curses_gui.Keycodes.ESCAPE:
+    #                     break
+
     @staticmethod
     def test_column_mode():
-        class MyThread(threading.Thread):
+        class SelectableThread(threading.Thread):
             def __init__(self):
                 super().__init__(daemon=True)
-                self.keep_going = True
                 self.imdb_search_response = None
+                self.read_pipe_fd, self.write_pipe_fd = os.pipe()
+                self.read_buffer = ''
+
+            def process_pipe_read(self):
+                text = os.read(my_thread.read_pipe_fd, 1024)
+                if not text:
+                    return
+                self.read_buffer += text.decode('ascii')
+
+            def get_message(self):
+                newline_i = self.read_buffer.find('\n')
+                if newline_i < 0:
+                    return None
+                read_message = self.read_buffer[:newline_i]
+                self.read_buffer = self.read_buffer[newline_i + 1:]
+
+                return read_message
 
             def run(self) -> None:
-                logging.info('Fetching IMDB info...')
-                self.imdb_search_response = imdb_utils.get_imdb_search_results('21 jump street')
-                logging.info('Fetched IMDB info')
+                for i in range(10):
+                    os.write(self.write_pipe_fd, bytes(f'SelectableThread pass {i}\n', 'ascii'))
+                    time.sleep(1.0)
 
-                logging.info('MyThread exit.')
+                logging.info('SelectableThread closing self.write_pipe_fd')
+                os.close(self.write_pipe_fd)
+
+                logging.info('SelectableThread exit.')
 
         logging.info('Creating DialogBox')
         time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
         with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
-            logging.info('Creating MyThread')
-            my_thread = MyThread()
-            logging.info('Starting MyThread')
+            dialog_box.show()
+
+            logging.info('Creating SelectableThread')
+            my_thread = SelectableThread()
+            logging.info('Starting SelectableThread')
             my_thread.start()
 
-            while True:
-                logging.info('Calling DialogBox.run')
-                result = dialog_box.run(key_timeout_msec=100)
-                logging.info('DialogBox result = %s', result)
-                if result == -1:
-                    logging.info('User pressed Keycodes.ESCAPE')
-                    break
-                else:
-                    time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-                    dialog_box.set_prompt(time_str)
+            sel = selectors.DefaultSelector()
+            sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
 
-                if my_thread.imdb_search_response:
-                    logging.info('MyThread got the IMDB data')
-                    break
+            while my_thread.is_alive():
+                time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
+                dialog_box.set_prompt(time_str, refresh=True)
 
-            logging.info('Stopping MyThread')
-            my_thread.keep_going = False
+                # events = sel.select(0.5)
+                events = sel.select()
 
-            imdb_info_list = imdb_utils.parse_imdb_search_results(my_thread.imdb_search_response)
+                if not events:
+                    continue
 
-            header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
-                              curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
-                              curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
-            header_row = curses_gui.Row(header_columns)
-            display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
-            with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
-                while True:
-                    run_result = imdb_search_results_panel.run()
-                    if run_result.key == curses_gui.Keycodes.ESCAPE:
-                        break
+                for selector_key, event_mask in events:
+                    if selector_key.data == 'PIPE':
+                        my_thread.process_pipe_read()
+                        while True:
+                            message = my_thread.get_message()
+                            if not message:
+                                break
+                            logging.info(f'Got message from worker thread: {message}')
+
+            sel.unregister(my_thread.read_pipe_fd)
+            sel.close()
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
