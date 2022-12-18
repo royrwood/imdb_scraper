@@ -46,6 +46,7 @@ if process_id:
     os.close(w_fd)
 
     print('PARENT: Opening r_file')
+    fcntl.fcntl(r_fd, fcntl.F_SETFL, os.O_NONBLOCK)
     r_file = os.fdopen(r_fd, 'r')
 
     print('PARENT: Creating selector')
@@ -71,6 +72,7 @@ if process_id:
 
     with raw(sys.stdin):
         keep_going = True
+        read_buffer = ''
         while keep_going:
             print('PARENT: Waiting for data')
             events = sel.select(0.5)
@@ -78,15 +80,26 @@ if process_id:
                 if selector_key.data == 'PIPE':
                     print('PARENT: Reading r_file')
                     text = r_file.read()
-                    print(f'PARENT: Read "{text}"')
-                    keep_going = False
+                    print(f'PARENT: Read {len(text)} bytes')
+                    if not text:
+                        keep_going = False
+                    read_buffer += text
+                    if '\n' in read_buffer:
+                        newline_i = read_buffer.find('\n')
+                        read_message = read_buffer[:newline_i]
+                        print(f'PARENT: Read message "{read_message}"')
+                        read_buffer = read_buffer[newline_i + 1:]
+                        # keep_going = False
                 elif selector_key.data == 'STDIN':
                     char = sys.stdin.read(1)
                     print(f'Read char "{repr(char)}"')
+                else:
+                    print(f'Unknown selector key.data')
 
     sel.unregister(r_file)
     sel.close()
 
+    print('PARENT: Exiting')
     sys.exit(0)
 
 else:
@@ -96,7 +109,22 @@ else:
     print('CHILD: Opening w_file')
     w_file = os.fdopen(w_fd, 'w')
     print('CHILD: Sleeping')
-    time.sleep(5)
+    time.sleep(2)
     print('CHILD: Writing w_file')
-    w_file.write('CHILD SAYS HELLO')
+    w_file.write('CHILD\n')
+    w_file.flush()
+    time.sleep(2)
+    print('CHILD: Writing w_file')
+    w_file.write('SAYS\n')
+    w_file.flush()
+    time.sleep(2)
+    print('CHILD: Writing w_file')
+    w_file.write('HELLO\n')
+    w_file.flush()
+
+    print('CHILD: Closing w_file')
+    w_file.close()
+    print('CHILD: Sleeping')
+    time.sleep(2)
+    print('CHILD: Exiting')
     sys.exit(0)
