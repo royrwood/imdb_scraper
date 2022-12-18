@@ -38,6 +38,9 @@ class nonblocking(object):
 print('Creating pipe...')
 r_fd, w_fd = os.pipe()
 
+print(f'type of r_fd = {type(r_fd)}')
+print(f'type of w_fd = {type(w_fd)}')
+
 print('Forking...')
 process_id = os.fork()
 

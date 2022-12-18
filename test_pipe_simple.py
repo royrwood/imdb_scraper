@@ -97,3 +97,7 @@ else:
 
     print('CHILD: Exiting')
     sys.exit(0)
+
+
+# Interesting selectable event:
+# https://lat.sk/2015/02/multiple-event-waiting-python-3/
