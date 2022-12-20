@@ -123,70 +123,111 @@ class MyMenu(curses_gui.MainMenu):
     #                 run_result = imdb_search_results_panel.run()
     #                 if run_result.key == curses_gui.Keycodes.ESCAPE:
     #                     break
-
+    #
+    # @staticmethod
+    # def test_column_mode():
+    #     class SelectableThread(threading.Thread):
+    #         def __init__(self):
+    #             super().__init__(daemon=True)
+    #             self.imdb_search_response = None
+    #             self.read_pipe_fd, self.write_pipe_fd = os.pipe()
+    #             self.read_buffer = ''
+    #
+    #         def process_pipe_read(self):
+    #             text = os.read(my_thread.read_pipe_fd, 1024)
+    #             if text:
+    #                 self.read_buffer += text.decode('ascii')
+    #
+    #         def get_message(self):
+    #             read_message = None
+    #             newline_i = self.read_buffer.find('\n')
+    #             if newline_i >= 0:
+    #                 read_message = self.read_buffer[:newline_i]
+    #                 self.read_buffer = self.read_buffer[newline_i + 1:]
+    #             return read_message
+    #
+    #         def run(self) -> None:
+    #             for i in range(10):
+    #                 os.write(self.write_pipe_fd, bytes(f'SelectableThread pass {i}\n', 'ascii'))
+    #                 time.sleep(1.0)
+    #
+    #             logging.info('SelectableThread closing self.write_pipe_fd')
+    #             os.close(self.write_pipe_fd)
+    #
+    #             logging.info('SelectableThread exit.')
+    #
+    #     logging.info('Creating DialogBox')
+    #     time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
+    #     with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
+    #         dialog_box.show()
+    #
+    #         logging.info('Creating SelectableThread')
+    #         my_thread = SelectableThread()
+    #         logging.info('Starting SelectableThread')
+    #         my_thread.start()
+    #
+    #         sel = selectors.DefaultSelector()
+    #         sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
+    #
+    #         while my_thread.is_alive():
+    #             time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
+    #             dialog_box.set_prompt(time_str, refresh=True)
+    #
+    #             # events = sel.select(0.5)
+    #             events = sel.select()
+    #
+    #             if not events:
+    #                 continue
+    #
+    #             for selector_key, event_mask in events:
+    #                 if selector_key.data == 'PIPE':
+    #                     my_thread.process_pipe_read()
+    #                     while True:
+    #                         message = my_thread.get_message()
+    #                         if not message:
+    #                             break
+    #                         logging.info(f'Got message from worker thread: {message}')
+    #
+    #         sel.unregister(my_thread.read_pipe_fd)
+    #         sel.close()
     @staticmethod
     def test_column_mode():
         class SelectableThread(threading.Thread):
-            def __init__(self):
+            def __init__(self, callable_task):
                 super().__init__(daemon=True)
-                self.imdb_search_response = None
+                self.callable_task = callable_task
+                self.callable_result = None
                 self.read_pipe_fd, self.write_pipe_fd = os.pipe()
-                self.read_buffer = ''
-
-            def process_pipe_read(self):
-                text = os.read(my_thread.read_pipe_fd, 1024)
-                if text:
-                    self.read_buffer += text.decode('ascii')
-
-            def get_message(self):
-                read_message = None
-                newline_i = self.read_buffer.find('\n')
-                if newline_i >= 0:
-                    read_message = self.read_buffer[:newline_i]
-                    self.read_buffer = self.read_buffer[newline_i + 1:]
-                return read_message
 
             def run(self) -> None:
-                for i in range(10):
-                    os.write(self.write_pipe_fd, bytes(f'SelectableThread pass {i}\n', 'ascii'))
-                    time.sleep(1.0)
-
-                logging.info('SelectableThread closing self.write_pipe_fd')
+                if self.callable_task:
+                    self.callable_result = self.callable_task()
+                os.write(self.write_pipe_fd, b'\n')
                 os.close(self.write_pipe_fd)
 
-                logging.info('SelectableThread exit.')
+        def my_task():
+            for i in range(10):
+                logging.info('Sleeping...')
+                time.sleep(1.0)
+            return 'Work Complete'
+
+        logging.info('Creating SelectableThread')
+        my_thread = SelectableThread(my_task)
+        logging.info('Starting SelectableThread')
+        my_thread.start()
+
+        sel = selectors.DefaultSelector()
+        sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
 
         logging.info('Creating DialogBox')
-        time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-        with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
-            dialog_box.show()
-
-            logging.info('Creating SelectableThread')
-            my_thread = SelectableThread()
-            logging.info('Starting SelectableThread')
-            my_thread.start()
-
-            sel = selectors.DefaultSelector()
-            sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
-
+        with curses_gui.DialogBox(prompt=[datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")], buttons_text=['Cancel'], show_immediately=True) as dialog_box:
             while my_thread.is_alive():
-                time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-                dialog_box.set_prompt(time_str, refresh=True)
+                dialog_box.set_prompt(datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f"), refresh=True)
 
-                # events = sel.select(0.5)
-                events = sel.select()
-
-                if not events:
-                    continue
-
-                for selector_key, event_mask in events:
-                    if selector_key.data == 'PIPE':
-                        my_thread.process_pipe_read()
-                        while True:
-                            message = my_thread.get_message()
-                            if not message:
-                                break
-                            logging.info(f'Got message from worker thread: {message}')
+                if events := sel.select(0.5):
+                    for selector_key, event_mask in events:
+                        if selector_key.data == 'PIPE':
+                            logging.info(f'Got result from worker thread: {my_thread.callable_result}')
 
             sel.unregister(my_thread.read_pipe_fd)
             sel.close()

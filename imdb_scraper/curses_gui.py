@@ -797,7 +797,7 @@ class InputPanel:
 
 
 class DialogBox:
-    def __init__(self, prompt: Union[Row, List[Row], List[str]], buttons_text: List[str]):
+    def __init__(self, prompt: Union[Row, List[Row], List[str]], buttons_text: List[str], show_immediately: bool = False):
         self.window = None
         self.panel = None
         self.needs_render = True
@@ -824,6 +824,9 @@ class DialogBox:
         self.window.keypad(True)
         self.panel = curses.panel.new_panel(self.window)
         self.panel.hide()
+
+        if show_immediately:
+            self.show()
 
     def __enter__(self):
         return self
