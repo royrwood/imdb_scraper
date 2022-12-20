@@ -135,17 +135,15 @@ class MyMenu(curses_gui.MainMenu):
 
             def process_pipe_read(self):
                 text = os.read(my_thread.read_pipe_fd, 1024)
-                if not text:
-                    return
-                self.read_buffer += text.decode('ascii')
+                if text:
+                    self.read_buffer += text.decode('ascii')
 
             def get_message(self):
+                read_message = None
                 newline_i = self.read_buffer.find('\n')
-                if newline_i < 0:
-                    return None
-                read_message = self.read_buffer[:newline_i]
-                self.read_buffer = self.read_buffer[newline_i + 1:]
-
+                if newline_i >= 0:
+                    read_message = self.read_buffer[:newline_i]
+                    self.read_buffer = self.read_buffer[newline_i + 1:]
                 return read_message
 
             def run(self) -> None:
