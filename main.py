@@ -8,6 +8,7 @@ import os
 import json
 import math
 import selectors
+import sys
 import threading
 import time
 from typing import List, Optional
@@ -218,18 +219,25 @@ class MyMenu(curses_gui.MainMenu):
 
         sel = selectors.DefaultSelector()
         sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
+        sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
 
         logging.info('Creating DialogBox')
         with curses_gui.DialogBox(prompt=[datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")], buttons_text=['Cancel'], show_immediately=True) as dialog_box:
-            while my_thread.is_alive():
+            keep_going = True
+            while keep_going and my_thread.is_alive():
                 dialog_box.set_prompt(datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f"), refresh=True)
 
                 if events := sel.select(0.5):
                     for selector_key, event_mask in events:
                         if selector_key.data == 'PIPE':
                             logging.info(f'Got result from worker thread: {my_thread.callable_result}')
+                        elif selector_key.data == 'STDIN':
+                            logging.info(f'Ready to read sys.stdin')
+                            dialog_box.run()
+                            keep_going = False
 
             sel.unregister(my_thread.read_pipe_fd)
+            sel.unregister(sys.stdin)
             sel.close()
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
