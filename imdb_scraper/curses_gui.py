@@ -27,8 +27,10 @@
 
 import curses
 import curses.panel
+import dataclasses
 import logging
 import os
+import threading
 import traceback
 from enum import IntEnum, unique
 from typing import List, Tuple, Callable, Union, Optional
@@ -71,6 +73,26 @@ class CursesStdscrType:
 
 
 CURSES_STDSCR: CursesStdscrType = CursesStdscrType()
+
+
+@dataclasses.dataclass
+class ThreadedDialogResult:
+    dialog_result: str = None
+    thread_result: object = None
+
+
+class SelectableThread(threading.Thread):
+    def __init__(self, callable_task):
+        super().__init__(daemon=True)
+        self.callable_task = callable_task
+        self.callable_result = None
+        self.read_pipe_fd, self.write_pipe_fd = os.pipe()
+
+    def run(self) -> None:
+        if self.callable_task:
+            self.callable_result = self.callable_task()
+        os.write(self.write_pipe_fd, b'\n')
+        os.close(self.write_pipe_fd)
 
 
 class Column:
@@ -909,20 +931,16 @@ class DialogBox:
 
         self.needs_render = False
 
-    def run(self, key_timeout_msec=-1):
+    def run(self, single_key=False):
         self.show()
 
-        self.window.timeout(key_timeout_msec)
+        self.render()
+        curses.panel.update_panels()
+        CURSES_STDSCR.refresh()
 
         while True:
-            self.render()
-            curses.panel.update_panels()
-            CURSES_STDSCR.refresh()
-
+            result = None
             key = self.window.getch()
-            if key_timeout_msec and key == -1:
-                self.window.timeout(-1)
-                return None
 
             if key == curses.KEY_LEFT and self.hilighted_button_index > 0:
                 self.hilighted_button_index -= 1
@@ -931,11 +949,17 @@ class DialogBox:
                 self.hilighted_button_index += 1
                 self.needs_render = True
             elif key == Keycodes.ESCAPE:
-                self.window.timeout(-1)
-                return -1
+                result = ''
             elif key == Keycodes.RETURN:
-                self.window.timeout(-1)
-                return self.hilighted_button_index
+                result = self.buttons_text[self.hilighted_button_index].strip()
+
+            if self.needs_render:
+                self.render()
+                curses.panel.update_panels()
+                CURSES_STDSCR.refresh()
+
+            if single_key:
+                return result
 
 
 class MainMenu(ScrollingPanel):
