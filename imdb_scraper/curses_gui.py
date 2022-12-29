@@ -75,12 +75,6 @@ class CursesStdscrType:
 CURSES_STDSCR: CursesStdscrType = CursesStdscrType()
 
 
-@dataclasses.dataclass
-class ThreadedDialogResult:
-    dialog_result: str = None
-    thread_result: object = None
-
-
 class SelectableThread(threading.Thread):
     def __init__(self, callable_task):
         super().__init__(daemon=True)
@@ -93,6 +87,12 @@ class SelectableThread(threading.Thread):
             self.callable_result = self.callable_task()
         os.write(self.write_pipe_fd, b'\n')
         os.close(self.write_pipe_fd)
+
+
+@dataclasses.dataclass
+class ThreadedDialogResult:
+    dialog_result: str = None
+    thread: SelectableThread = None
 
 
 class Column:

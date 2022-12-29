@@ -208,17 +208,18 @@ class MyMenu(curses_gui.MainMenu):
         sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
         sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
 
-        final_result = None
+        threaded_dialog_result = curses_gui.ThreadedDialogResult(thread=my_thread)
 
         logging.info('Creating DialogBox')
         with curses_gui.DialogBox(prompt=[datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")], buttons_text=['OK', 'Cancel'], show_immediately=True) as dialog_box:
             keep_going = True
-            while keep_going and my_thread.is_alive():
+
+            while keep_going:
                 # The timeout on sel.select() is 0.5s, so we will update the dialog prompt as we wait
                 dialog_box.set_prompt(datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f"), refresh=True)
 
                 if not my_thread.is_alive():
-                    final_result = curses_gui.ThreadedDialogResult(dialog_result=dialog_box_result)
+                    keep_going = False
                 elif events := sel.select(0.5):
                     for selector_key, event_mask in events:
                         if selector_key.data == 'PIPE':
@@ -229,7 +230,7 @@ class MyMenu(curses_gui.MainMenu):
                             logging.info(f'Got {dialog_box_result=}')
                             if dialog_box_result == 'Cancel':
                                 keep_going = False
-                                final_result = curses_gui.ThreadedDialogResult(dialog_result=dialog_box_result)
+                                threaded_dialog_result.dialog_result = dialog_box_result
 
             sel.unregister(my_thread.read_pipe_fd)
             sel.unregister(sys.stdin)
@@ -237,7 +238,7 @@ class MyMenu(curses_gui.MainMenu):
 
         # TODO: Clear stdin for stacked keypresses?
 
-        return final_result
+        return threaded_dialog_result
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
