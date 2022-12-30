@@ -30,6 +30,8 @@ import curses.panel
 import dataclasses
 import logging
 import os
+import selectors
+import sys
 import threading
 import traceback
 from enum import IntEnum, unique
@@ -91,8 +93,8 @@ class SelectableThread(threading.Thread):
 
 @dataclasses.dataclass
 class ThreadedDialogResult:
-    dialog_result: str = None
-    thread: SelectableThread = None
+    dialog_result: Optional[str] = None
+    selectable_thread: SelectableThread = None
 
 
 class Column:
@@ -819,7 +821,7 @@ class InputPanel:
 
 
 class DialogBox:
-    def __init__(self, prompt: Union[Row, List[Row], List[str]], buttons_text: List[str], show_immediately: bool = False):
+    def __init__(self, prompt: Union[Row, List[Row], List[str], str], buttons_text: List[str], show_immediately: bool = False):
         self.window = None
         self.panel = None
         self.needs_render = True
@@ -960,6 +962,28 @@ class DialogBox:
 
             if single_key:
                 return result
+
+def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedDialogResult:
+    task_thread = SelectableThread(task)
+    task_thread.start()
+
+    sel = selectors.DefaultSelector()
+    sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
+    sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
+
+    threaded_dialog_result = ThreadedDialogResult(dialog_result=None, selectable_thread=task_thread)
+
+    with DialogBox(prompt=dialog_text, buttons_text=['Cancel'], show_immediately=True) as dialog_box:
+        while task_thread.is_alive() and threaded_dialog_result.dialog_result is None:
+            for selector_key, event_mask in sel.select():
+                if selector_key.data == 'STDIN':
+                    threaded_dialog_result.dialog_result = dialog_box.run(single_key=True)
+
+        sel.unregister(task_thread.read_pipe_fd)
+        sel.unregister(sys.stdin)
+        sel.close()
+
+    return threaded_dialog_result
 
 
 class MainMenu(ScrollingPanel):

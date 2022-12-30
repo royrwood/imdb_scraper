@@ -11,7 +11,7 @@ import time
 import tty
 
 
-class raw_nonblocking(object):
+class cbreak_nonblocking(object):
     def __init__(self, stream):
         self.stream = stream
         self.fd = self.stream.fileno()
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     sel = selectors.DefaultSelector()
     sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
 
-    with raw_nonblocking(sys.stdin):
+    with cbreak_nonblocking(sys.stdin):
         keep_going = True
 
         while keep_going:

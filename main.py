@@ -33,7 +33,7 @@ class MyMenu(curses_gui.MainMenu):
         self.menu_choices.append(('Display Video Info', self.display_all_video_file_data))
         self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
         self.menu_choices.append((curses_gui.HorizontalLine(), None))
-        self.menu_choices.append(('TEST COLUMN MODE', self.test_column_mode))
+        self.menu_choices.append(('TEST STUFF', self.test_stuff))
 
     def quit_confirm(self):
         if self.video_files_is_dirty:
@@ -44,13 +44,13 @@ class MyMenu(curses_gui.MainMenu):
             return True
 
     # @staticmethod
-    # def test_column_mode():
+    # def test_stuff():
     #     display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
     #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
     #         scrolling_panel.run()
 
     # @staticmethod
-    # def test_column_mode():
+    # def test_stuff():
     #     import random
     #     import string
     #
@@ -72,7 +72,7 @@ class MyMenu(curses_gui.MainMenu):
     #         scrolling_panel.run()
 
     # @staticmethod
-    # def test_column_mode():
+    # def test_stuff():
     #     class MyThread(threading.Thread):
     #         def __init__(self):
     #             super().__init__(daemon=True)
@@ -126,7 +126,7 @@ class MyMenu(curses_gui.MainMenu):
     #                     break
     #
     # @staticmethod
-    # def test_column_mode():
+    # def test_stuff():
     #     class SelectableThread(threading.Thread):
     #         def __init__(self):
     #             super().__init__(daemon=True)
@@ -191,54 +191,67 @@ class MyMenu(curses_gui.MainMenu):
     #
     #         sel.unregister(my_thread.read_pipe_fd)
     #         sel.close()
+
+    # @staticmethod
+    # def test_stuff():
+    #     def my_task():
+    #         for i in range(10):
+    #             logging.info('Sleeping...')
+    #             time.sleep(1.0)
+    #         return 'Work Complete'
+    #
+    #     logging.info('Creating SelectableThread')
+    #     my_thread = curses_gui.SelectableThread(my_task)
+    #     logging.info('Starting SelectableThread')
+    #     my_thread.start()
+    #
+    #     sel = selectors.DefaultSelector()
+    #     sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
+    #     sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
+    #
+    #     threaded_dialog_result = curses_gui.ThreadedDialogResult(selectable_thread=my_thread)
+    #
+    #     logging.info('Creating DialogBox')
+    #     with curses_gui.DialogBox(prompt=[datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")], buttons_text=['OK', 'Cancel'], show_immediately=True) as dialog_box:
+    #         keep_going = True
+    #
+    #         while keep_going:
+    #             # The timeout on sel.select() is 0.5s, so we will update the dialog prompt as we wait
+    #             dialog_box.set_prompt(datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f"), refresh=True)
+    #
+    #             if not my_thread.is_alive():
+    #                 keep_going = False
+    #             elif events := sel.select(0.5):
+    #                 for selector_key, event_mask in events:
+    #                     if selector_key.data == 'PIPE':
+    #                         logging.info(f'Got result from worker thread: {my_thread.callable_result}')
+    #                     elif selector_key.data == 'STDIN':
+    #                         logging.info(f'Ready to read sys.stdin')
+    #                         dialog_box_result = dialog_box.run(single_key=True)
+    #                         logging.info(f'Got {dialog_box_result=}')
+    #                         if dialog_box_result == 'Cancel':
+    #                             keep_going = False
+    #                             threaded_dialog_result.dialog_result = dialog_box_result
+    #
+    #         sel.unregister(my_thread.read_pipe_fd)
+    #         sel.unregister(sys.stdin)
+    #         sel.close()
+    #
+    #     # TODO: Clear stdin for stacked keypresses?
+    #
+    #     return threaded_dialog_result
+
     @staticmethod
-    def test_column_mode():
+    def test_stuff():
         def my_task():
             for i in range(10):
                 logging.info('Sleeping...')
                 time.sleep(1.0)
             return 'Work Complete'
 
-        logging.info('Creating SelectableThread')
-        my_thread = curses_gui.SelectableThread(my_task)
-        logging.info('Starting SelectableThread')
-        my_thread.start()
+        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(my_task, 'Waiting for background task to complete...')
 
-        sel = selectors.DefaultSelector()
-        sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
-        sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
-
-        threaded_dialog_result = curses_gui.ThreadedDialogResult(thread=my_thread)
-
-        logging.info('Creating DialogBox')
-        with curses_gui.DialogBox(prompt=[datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")], buttons_text=['OK', 'Cancel'], show_immediately=True) as dialog_box:
-            keep_going = True
-
-            while keep_going:
-                # The timeout on sel.select() is 0.5s, so we will update the dialog prompt as we wait
-                dialog_box.set_prompt(datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f"), refresh=True)
-
-                if not my_thread.is_alive():
-                    keep_going = False
-                elif events := sel.select(0.5):
-                    for selector_key, event_mask in events:
-                        if selector_key.data == 'PIPE':
-                            logging.info(f'Got result from worker thread: {my_thread.callable_result}')
-                        elif selector_key.data == 'STDIN':
-                            logging.info(f'Ready to read sys.stdin')
-                            dialog_box_result = dialog_box.run(single_key=True)
-                            logging.info(f'Got {dialog_box_result=}')
-                            if dialog_box_result == 'Cancel':
-                                keep_going = False
-                                threaded_dialog_result.dialog_result = dialog_box_result
-
-            sel.unregister(my_thread.read_pipe_fd)
-            sel.unregister(sys.stdin)
-            sel.close()
-
-        # TODO: Clear stdin for stacked keypresses?
-
-        return threaded_dialog_result
+        logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
