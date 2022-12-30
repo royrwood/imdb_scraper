@@ -967,11 +967,11 @@ def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedD
     task_thread = SelectableThread(task)
     task_thread.start()
 
+    threaded_dialog_result = ThreadedDialogResult(dialog_result=None, selectable_thread=task_thread)
+
     sel = selectors.DefaultSelector()
     sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
     sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
-
-    threaded_dialog_result = ThreadedDialogResult(dialog_result=None, selectable_thread=task_thread)
 
     with DialogBox(prompt=dialog_text, buttons_text=['Cancel'], show_immediately=True) as dialog_box:
         while task_thread.is_alive() and threaded_dialog_result.dialog_result is None:
@@ -979,9 +979,9 @@ def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedD
                 if selector_key.data == 'STDIN':
                     threaded_dialog_result.dialog_result = dialog_box.run(single_key=True)
 
-        sel.unregister(task_thread.read_pipe_fd)
-        sel.unregister(sys.stdin)
-        sel.close()
+    sel.unregister(task_thread.read_pipe_fd)
+    sel.unregister(sys.stdin)
+    sel.close()
 
     return threaded_dialog_result
 
