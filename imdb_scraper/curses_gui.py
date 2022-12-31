@@ -960,7 +960,7 @@ class DialogBox:
                 curses.panel.update_panels()
                 CURSES_STDSCR.refresh()
 
-            if single_key:
+            if single_key or result is not None:
                 return result
 
 def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedDialogResult:

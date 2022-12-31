@@ -358,7 +358,7 @@ class MyMenu(curses_gui.MainMenu):
             dialog_box.run()
 
     def scan_video_folder(self):
-        with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/media/rrwood/Seagate Expansion Drive/Videos/') as input_panel:
+        with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/home/rrwood/Videos/Movies/') as input_panel:
             video_folder_path = input_panel.run()
         if video_folder_path is None:
             return
