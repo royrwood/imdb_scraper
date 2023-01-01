@@ -25,10 +25,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
             if readable or writeable:
                 break
 
-        print(f'\n\n\n\n\n')
-        print(f'Sleeping before accepting connection...')
-        time.sleep(5)
+        # print(f'Sleeping before accepting connection...')
+        # time.sleep(5)
 
+        print(f'\n\n')
         print(f'Accepting connection...')
         conn, addr = server_listen_socket.accept()
         conn.setblocking(False)
