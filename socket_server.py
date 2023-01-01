@@ -19,14 +19,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
     server_listen_socket.listen()
 
     while True:
-        print(f'\n\n\n\n\n')
-
         while True:
             print(f'Calling select on listen socket...')
             readable, writeable, exceptable = select.select([server_listen_socket], [server_listen_socket], [], 1.0)
             if readable or writeable:
                 break
 
+        print(f'\n\n\n\n\n')
         print(f'Sleeping before accepting connection...')
         time.sleep(5)
 
