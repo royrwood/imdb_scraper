@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import logging
 import socket
 import select
 import sys
@@ -20,45 +21,46 @@ def main(argv):
         server_listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_listen_socket.bind((host_ip, PORT))
 
-        print(f'Configuring listen socket as non-blocking...')
+        logging.info(f'Configuring listen socket as non-blocking...')
         server_listen_socket.setblocking(False)
 
-        print(f'Listening on socket...')
+        logging.info(f'Listening on socket...')
         server_listen_socket.listen()
 
         while True:
             while True:
-                print(f'Calling select on listen socket...')
+                logging.info(f'Calling select on listen socket...')
                 readable, writeable, exceptable = select.select([server_listen_socket], [server_listen_socket], [], 1.0)
                 if readable or writeable:
                     break
 
-            # print(f'Sleeping before accepting connection...')
+            # logging.info(f'Sleeping before accepting connection...')
             # time.sleep(5)
 
-            print(f'\n\n')
-            print(f'Accepting connection...')
+            logging.info(f'')
+            logging.info(f'')
+            logging.info(f'Accepting connection...')
             conn, addr = server_listen_socket.accept()
             conn.setblocking(False)
-            print(f'Connected by {addr}')
+            logging.info(f'Connected by {addr}')
 
             try:
-                print(f'Servicing connection...')
+                logging.info(f'Servicing connection...')
                 with conn:
                     server_msg_count = 0
                     client_msg_buffer = ''
 
                     while True:
-                        print(f'Calling select...')
+                        logging.info(f'Calling select...')
                         readable, writeable, exceptable = select.select([conn], [conn], [], 5.0)
 
                         if readable:
                             try:
-                                print(f'Socket is readable; reading data...')
+                                logging.info(f'Socket is readable; reading data...')
                                 client_bytes = conn.recv(1024)
 
                                 if not client_bytes:
-                                    print(f'Read no data; connection closed; exiting...')
+                                    logging.info(f'Read no data; connection closed; exiting...')
                                     break
 
                                 client_str = client_bytes.decode('utf8')
@@ -66,21 +68,23 @@ def main(argv):
                                 while '\n' in client_msg_buffer:
                                     linefeed_index = client_msg_buffer.index('\n')
                                     client_msg = client_msg_buffer[:linefeed_index]
-                                    print(f'Received message: {client_msg}')
+                                    logging.info(f'Received message: {client_msg}')
                                     client_msg_buffer = client_msg_buffer[linefeed_index + 1:]
                             except BlockingIOError:
-                                print(f'Caught BlockingIOError')
+                                logging.info(f'Caught BlockingIOError')
 
                         if writeable:
-                            print(f'Writing msg #{server_msg_count}')
+                            logging.info(f'Writing msg #{server_msg_count}')
                             msg_bytes = f'{server_msg_count=}\n'.encode('utf8')
                             conn.sendall(msg_bytes)
                             server_msg_count += 1
                             time.sleep(3.0)
 
             except BrokenPipeError:
-                print(f'Caught BrokenPipeError; exiting...')
+                logging.info(f'Caught BrokenPipeError; exiting...')
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format='[%(levelname)s] %(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
+
     main(sys.argv[1:])
