@@ -19,51 +19,55 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
     server_listen_socket.listen()
 
     while True:
-        print(f'Calling select on listen socket...')
-        readable, writeable, exceptable = select.select([server_listen_socket], [server_listen_socket], [], 1.0)
-        if readable or writeable:
-            break
+        while True:
+            print(f'Calling select on listen socket...')
+            readable, writeable, exceptable = select.select([server_listen_socket], [server_listen_socket], [], 1.0)
+            if readable or writeable:
+                break
 
-    print(f'Accepting connection...')
-    conn, addr = server_listen_socket.accept()
-    conn.setblocking(False)
-    print(f'Connected by {addr}')
+        print(f'Sleeping before accepting connection...')
+        time.sleep(5)
 
-    try:
-        print(f'Servicing connection...')
-        with conn:
-            server_msg_count = 0
-            client_msg_buffer = ''
+        print(f'Accepting connection...')
+        conn, addr = server_listen_socket.accept()
+        conn.setblocking(False)
+        print(f'Connected by {addr}')
 
-            while True:
-                print(f'Calling select...')
-                readable, writeable, exceptable = select.select([conn], [conn], [], 5.0)
+        try:
+            print(f'Servicing connection...')
+            with conn:
+                server_msg_count = 0
+                client_msg_buffer = ''
 
-                if readable:
-                    try:
-                        print(f'Socket is readable; reading data...')
-                        client_bytes = conn.recv(1024)
+                while True:
+                    print(f'Calling select...')
+                    readable, writeable, exceptable = select.select([conn], [conn], [], 5.0)
 
-                        if not client_bytes:
-                            print(f'Read no data; connection closed; exiting...')
-                            break
+                    if readable:
+                        try:
+                            print(f'Socket is readable; reading data...')
+                            client_bytes = conn.recv(1024)
 
-                        client_str = client_bytes.decode('utf8')
-                        client_msg_buffer += client_str
-                        while '\n' in client_msg_buffer:
-                            linefeed_index = client_msg_buffer.index('\n')
-                            client_msg = client_msg_buffer[:linefeed_index]
-                            print(f'Received message: {client_msg}')
-                            client_msg_buffer = client_msg_buffer[linefeed_index + 1:]
-                    except BlockingIOError:
-                        print(f'Caught BlockingIOError')
+                            if not client_bytes:
+                                print(f'Read no data; connection closed; exiting...')
+                                break
 
-                if writeable:
-                    print(f'Writing msg #{server_msg_count}')
-                    msg_bytes = f'{server_msg_count=}\n'.encode('utf8')
-                    conn.sendall(msg_bytes)
-                    server_msg_count += 1
-                    time.sleep(3.0)
+                            client_str = client_bytes.decode('utf8')
+                            client_msg_buffer += client_str
+                            while '\n' in client_msg_buffer:
+                                linefeed_index = client_msg_buffer.index('\n')
+                                client_msg = client_msg_buffer[:linefeed_index]
+                                print(f'Received message: {client_msg}')
+                                client_msg_buffer = client_msg_buffer[linefeed_index + 1:]
+                        except BlockingIOError:
+                            print(f'Caught BlockingIOError')
 
-    except BrokenPipeError:
-        print(f'Caught BrokenPipeError; exiting...')
+                    if writeable:
+                        print(f'Writing msg #{server_msg_count}')
+                        msg_bytes = f'{server_msg_count=}\n'.encode('utf8')
+                        conn.sendall(msg_bytes)
+                        server_msg_count += 1
+                        time.sleep(3.0)
+
+        except BrokenPipeError:
+            print(f'Caught BrokenPipeError; exiting...')

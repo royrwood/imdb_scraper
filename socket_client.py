@@ -24,7 +24,7 @@ client_socket_ready_to_read = False
 
 while not client_socket_ready_to_write:
     print(f'Waiting for socket read/write readiness....')
-    for selector_key, event_mask in sel.select(1.0):
+    for selector_key, event_mask in sel.select(0.5):
         if event_mask & selectors.EVENT_WRITE:
             print(f'Socket is ready to write')
             client_socket_ready_to_write = True
