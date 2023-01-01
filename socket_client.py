@@ -21,7 +21,7 @@ def main(argv):
     client_socket.setblocking(False)
 
     try:
-        logging.info(f'Connecting to server {HOST}....')
+        logging.info(f'Connecting to server {host_ip}....')
         client_socket.connect((host_ip, PORT))
     except BlockingIOError as e:
         logging.info('Caught BlockingIOError')
