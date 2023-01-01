@@ -37,7 +37,6 @@ print(f'Sent {byte_count} bytes to server')
 
 sel.modify(client_socket, selectors.EVENT_READ, 'SOCKET')
 
-msg_count = 0
 msg_buffer = ''
 keep_going = True
 

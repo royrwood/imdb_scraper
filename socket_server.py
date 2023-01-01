@@ -8,6 +8,7 @@ import time
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
     server_listen_socket.bind((HOST, PORT))
 
@@ -26,12 +27,14 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
     print(f'Accepting connection...')
     conn, addr = server_listen_socket.accept()
     conn.setblocking(False)
+    print(f'Connected by {addr}')
 
     try:
         print(f'Servicing connection...')
         with conn:
-            print(f'Connected by {addr}')
-            msg_count = 0
+            server_msg_count = 0
+            client_msg_buffer = ''
+
             while True:
                 print(f'Calling select...')
                 readable, writeable, exceptable = select.select([conn], [conn], [], 5.0)
@@ -39,21 +42,27 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
                 if readable:
                     try:
                         print(f'Socket is readable; reading data...')
-                        data = conn.recv(1024)
+                        client_bytes = conn.recv(1024)
 
-                        if not data:
+                        if not client_bytes:
                             print(f'Read no data; connection closed; exiting...')
                             break
 
-                        print(f'Read {len(data)} bytes of data: {data}')
+                        client_str = client_bytes.decode('utf8')
+                        client_msg_buffer += client_str
+                        while '\n' in client_msg_buffer:
+                            linefeed_index = client_msg_buffer.index('\n')
+                            client_msg = client_msg_buffer[:linefeed_index]
+                            print(f'Received message: {client_msg}')
+                            client_msg_buffer = client_msg_buffer[linefeed_index + 1:]
                     except BlockingIOError:
                         print(f'Caught BlockingIOError')
 
                 if writeable:
-                    print(f'Writing msg #{msg_count}')
-                    msg_bytes = f'{msg_count=}\n'.encode('utf8')
+                    print(f'Writing msg #{server_msg_count}')
+                    msg_bytes = f'{server_msg_count=}\n'.encode('utf8')
                     conn.sendall(msg_bytes)
-                    msg_count += 1
+                    server_msg_count += 1
                     time.sleep(3.0)
 
     except BrokenPipeError:
