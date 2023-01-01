@@ -85,6 +85,6 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='[%(levelname)s] %(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s [%(levelname)s] %(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
 
     main(sys.argv[1:])
