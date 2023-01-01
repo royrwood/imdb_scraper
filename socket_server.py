@@ -10,6 +10,7 @@ PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_listen_socket:
+    server_listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_listen_socket.bind((HOST, PORT))
 
     print(f'Configuring listen socket as non-blocking...')
