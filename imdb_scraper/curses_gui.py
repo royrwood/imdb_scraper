@@ -211,7 +211,7 @@ class ScrollingPanel:
 
         self.set_header(header_row)
         self.set_rows(rows)
-        self.set_geometry()
+        # self.set_geometry()
 
     def __enter__(self):
         return self
@@ -250,34 +250,27 @@ class ScrollingPanel:
 
                 rows.append(row)
 
-                for i, column in enumerate(row.columns):
-                    if i >= len(self.column_widths):
+                for ci, column in enumerate(row.columns):
+                    if ci >= len(self.column_widths):
                         self.column_widths.append(column.width)
                     else:
-                        self.column_widths[i] = max(self.column_widths[i], column.width)
+                        self.column_widths[ci] = max(self.column_widths[ci], column.width)
 
             self.num_cols = len(self.column_widths)
-
-            if self.inner_padding:
-                for i in range(self.num_cols - 1):
-                    self.column_widths[i] += 1
-
-            if self.grid_mode:
-                if self.header_row:
-                    for i, column in enumerate(self.header_row.columns):
-                        column.width = self.column_widths[i]
-
-                for row in rows:
-                    for i, column in enumerate(row.columns):
-                        column.width = self.column_widths[i]
 
         self.rows = rows
         self.num_rows = len(self.rows)
         self.num_cols = len(self.column_widths)
-        self.rows_max_width = sum(self.column_widths)
+        if self.inner_padding:
+            self.rows_max_width = sum(self.column_widths) + self.num_cols - 1
+        else:
+            self.rows_max_width = sum(self.column_widths)
         self.needs_render = True
         self.top_visible_row_index = 0
-        self.hilighted_row_index = 0
+
+        if self.hilighted_row_index >= self.num_rows and self.num_rows > 0:
+            self.hilighted_row_index = self.num_rows - 1
+
         self.hilighted_col_index = 0
 
         # Since the row contents have changed, we need to recalculate the window geometry
@@ -376,19 +369,20 @@ class ScrollingPanel:
             self.window.border()
 
         if self.header_row:
-            chars_rendered = 0
-            for column in self.header_row.columns:
-                text_colour = column.colour
+            x = self.content_left
+            for ci, column in enumerate(self.header_row.columns):
                 raw_text = column.text
-                column_width = column.width
+                column_width = self.column_widths[ci] + int(self.inner_padding and ci < self.num_cols)
+                text_colour = column.colour
+
                 padded_text = f'{raw_text: <{column_width}}'
-                x = self.content_left + chars_rendered
                 self.window.addstr(1, x, padded_text, curses.color_pair(text_colour))
-                chars_rendered += column_width
+                x += column_width
 
         for ri in range(0, self.content_height):
             row_index = self.top_visible_row_index + ri
             y = self.content_top + ri
+            x = self.content_left
 
             if row_index >= self.num_rows:
                 text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
@@ -400,7 +394,6 @@ class ScrollingPanel:
             row = self.rows[row_index]
 
             if isinstance(row, HorizontalLine):
-                x = self.content_left
                 y = self.content_top + ri
                 text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
                 if row_index == self.hilighted_row_index:
@@ -410,30 +403,23 @@ class ScrollingPanel:
                 self.window.hline(y, x, curses.ACS_HLINE, self.content_width, curses.color_pair(text_colour))
                 continue
 
-            chars_rendered = 0
-
             for ci, column in enumerate(row.columns):
                 raw_text = column.text
-                column_width = column.width
+                column_width = self.column_widths[ci] + int(self.inner_padding and ci < self.num_cols)
 
-                if column_width > self.content_width:
-                    raw_text = raw_text[:self.content_width - 4] + u'...'
-                    column_width = len(raw_text)
-
-                if row_index == self.hilighted_row_index and (ci == self.hilighted_col_index or not self.select_grid_cells):
+                if row_index == self.hilighted_row_index and (not self.select_grid_cells or ci == self.hilighted_col_index):
                     text_colour = CursesColourBinding.COLOUR_BLACK_YELLOW
-
-                    # If last column of the hilighted row, pad the width out to the max content width
-                    if ci + 1 == len(row.columns):
-                        column_width = self.content_width - chars_rendered
                 else:
-                    # Shouldn't this be column.colour.value?
                     text_colour = column.colour
 
+                # This doesn't work right now-- we need to clip and bail on the row if we extend past the right edge
+                # if x + len(raw_text) > self.content_width:
+                #     raw_text = raw_text[:self.content_width - x - 4] + u'...'
+                #     column_width = len(raw_text)
+
                 padded_text = f'{raw_text: <{column_width}}'
-                x = self.content_left + chars_rendered
                 self.window.addstr(y, x, padded_text, curses.color_pair(text_colour))
-                chars_rendered += column_width
+                x += column_width
 
         self.needs_render = False
 
@@ -829,6 +815,7 @@ class DialogBox:
         self.prompt_rows: Optional[List[Row]] = None
         self.num_prompt_rows = 0
         self.buttons_text: Optional[List[str]] = None
+        self.raw_buttons_text: Optional[List[str]] = None
         self.num_buttons = 0
         self.button_text_width = 0
         self.content_width = 0
@@ -882,7 +869,8 @@ class DialogBox:
     def set_prompt_and_buttons(self, prompt, buttons_text):
         # TODO: Resize window if necessary!
 
-        self.buttons_text = [f' {b} ' for b in buttons_text]
+        self.raw_buttons_text = buttons_text[:]
+        self.buttons_text = [f' [ {b} ] ' for b in buttons_text]
         self.num_buttons = len(self.buttons_text)
         self.button_text_width = sum(len(b) for b in self.buttons_text)
         self.content_width = self.button_text_width
@@ -953,7 +941,7 @@ class DialogBox:
             elif key == Keycodes.ESCAPE:
                 result = ''
             elif key == Keycodes.RETURN:
-                result = self.buttons_text[self.hilighted_button_index].strip()
+                result = self.raw_buttons_text[self.hilighted_button_index]
 
             if self.needs_render:
                 self.render()

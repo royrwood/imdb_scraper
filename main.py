@@ -49,27 +49,27 @@ class MyMenu(curses_gui.MainMenu):
     #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
     #         scrolling_panel.run()
 
-    # @staticmethod
-    # def test_stuff():
-    #     import random
-    #     import string
-    #
-    #     display_lines = list()
-    #     for row_i in range(100):
-    #         text_list = list()
-    #         for col_i in range(2):
-    #             text_len = random.randint(5, 15)
-    #             text = ''
-    #             for text_i in range(text_len):
-    #                 text += random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits + '      ')
-    #             text_list.append(text)
-    #         display_lines.append(text_list)
-    #     header_columns = list()
-    #     header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
-    #     header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
-    #     header_row = curses_gui.Row(header_columns)
-    #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
-    #         scrolling_panel.run()
+    @staticmethod
+    def test_stuff():
+        import random
+        import string
+
+        display_lines = list()
+        for row_i in range(100):
+            text_list = list()
+            for col_i in range(2):
+                text_len = random.randint(5, 15)
+                text = ''
+                for text_i in range(text_len):
+                    text += random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits + '      ')
+                text_list.append(text)
+            display_lines.append(text_list)
+        header_columns = list()
+        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+        header_row = curses_gui.Row(header_columns)
+        with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
+            scrolling_panel.run()
 
     # @staticmethod
     # def test_stuff():
@@ -241,35 +241,40 @@ class MyMenu(curses_gui.MainMenu):
     #
     #     return threaded_dialog_result
 
-    @staticmethod
-    def test_stuff():
-        def my_task():
-            for i in range(10):
-                logging.info('Sleeping...')
-                time.sleep(1.0)
-            return 'Work Complete'
-
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(my_task, 'Waiting for background task to complete...')
-
-        logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
+    # @staticmethod
+    # def test_stuff():
+    #     def my_task():
+    #         for i in range(10):
+    #             logging.info('Sleeping...')
+    #             time.sleep(1.0)
+    #         return 'Work Complete'
+    #
+    #     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(my_task, 'Waiting for background task to complete...')
+    #
+    #     logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
             imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
         imdb_info_list = imdb_utils.parse_imdb_search_results(imdb_search_response)
 
-        header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_WHITE),
-                          curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_WHITE),
-                          curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_WHITE)]
+        header_columns = [curses_gui.Column(' ? ', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK)]
         header_row = curses_gui.Row(header_columns)
-        display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
-        with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
+        display_rows = [curses_gui.Row(['   ', imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
+        with curses_gui.ScrollingPanel(rows=display_rows, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
             while True:
                 run_result = imdb_search_results_panel.run()
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     break
-                # elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
-                #     self.update_video_imdb_info(video_file)
+                elif run_result.key == curses_gui.Keycodes.RETURN:
+                    display_rows = [curses_gui.Row(['   ', imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
+                    imdb_info = imdb_info_list[run_result.row_index]
+                    display_row = curses_gui.Row([' * ', imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year])
+                    display_rows[run_result.row_index] = display_row
+                    imdb_search_results_panel.set_rows(display_rows)
         self.video_files_is_dirty = True
 
     def display_individual_video_file(self, video_file: imdb_utils.VideoFile):
