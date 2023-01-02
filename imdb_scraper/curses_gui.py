@@ -370,7 +370,7 @@ class ScrollingPanel:
                 column_width = self.column_widths[ci] + int(self.inner_padding and ci < self.num_cols)
                 text_colour = column.colour
 
-                if x + column_width > self.content_right:
+                if x + column_width > self.content_right or ci == self.num_cols - 1:
                     column_width = self.content_right - x
                     raw_text = raw_text[:column_width]
 
@@ -412,7 +412,7 @@ class ScrollingPanel:
                 else:
                     text_colour = column.colour
 
-                if x + column_width > self.content_right:
+                if x + column_width > self.content_right or ci == self.num_cols - 1:
                     column_width = self.content_right - x
                     raw_text = raw_text[:column_width]
 

@@ -37,6 +37,7 @@ class MyMenu(curses_gui.MainMenu):
         self.menu_choices.append(('test_scrolling_panel_select_grid_cells', self.test_scrolling_panel_select_grid_cells))
         self.menu_choices.append(('test_scrolling_panel_100_rows', self.test_scrolling_panel_100_rows))
         self.menu_choices.append(('test_scrolling_panel_width', self.test_scrolling_panel_width))
+        self.menu_choices.append(('test_scrolling_panel_width_height', self.test_scrolling_panel_width_height))
 
     def quit_confirm(self):
         if self.video_files_is_dirty:
@@ -45,6 +46,22 @@ class MyMenu(curses_gui.MainMenu):
             return False
         else:
             return True
+
+    @staticmethod
+    def test_scrolling_panel_width_height():
+        header_columns = list()
+        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK))
+        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK))
+        header_row = curses_gui.Row(header_columns)
+
+        display_lines = [curses_gui.Row(['1', 'One']),
+                         curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']),
+                         curses_gui.Row(['333333333333', 'Three']),
+                         curses_gui.Row(['4', 'Four']),
+                         curses_gui.HorizontalLine(),
+                         curses_gui.Row(['555', 'Five']), ]
+        with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, width=0.5, height=0.5, inner_padding=True) as scrolling_panel:
+            scrolling_panel.run()
 
     @staticmethod
     def test_scrolling_panel_width():
@@ -154,13 +171,13 @@ class MyMenu(curses_gui.MainMenu):
     #                           curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
     #         header_row = curses_gui.Row(header_columns)
     #         display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
-    #         with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
+    #         with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, inner_padding=True) as imdb_search_results_panel:
     #             while True:
     #                 run_result = imdb_search_results_panel.run()
     #                 if run_result.key == curses_gui.Keycodes.ESCAPE:
     #                     break
 
-    @staticmethod
+    # @staticmethod
     # def test_selectable_thread_dialog():
     #     class SelectableThread(threading.Thread):
     #         def __init__(self):
@@ -288,6 +305,7 @@ class MyMenu(curses_gui.MainMenu):
     #
     #     logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
 
+
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         with curses_gui.MessagePanel(['Fetching IMDB Search Info...']) as message_panel:
             imdb_search_response = imdb_utils.get_imdb_search_results(video_file.scrubbed_file_name, video_file.year)
@@ -299,7 +317,7 @@ class MyMenu(curses_gui.MainMenu):
                           curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK)]
         header_row = curses_gui.Row(header_columns)
         display_rows = [curses_gui.Row(['   ', imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
-        with curses_gui.ScrollingPanel(rows=display_rows, header_row=header_row, grid_mode=True, inner_padding=True) as imdb_search_results_panel:
+        with curses_gui.ScrollingPanel(rows=display_rows, header_row=header_row, inner_padding=True) as imdb_search_results_panel:
             while True:
                 run_result = imdb_search_results_panel.run()
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
