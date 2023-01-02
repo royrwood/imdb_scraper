@@ -25,6 +25,7 @@
 #     console_gui_main(MyMenu)
 
 
+import copy
 import curses
 import curses.panel
 import dataclasses
@@ -119,14 +120,14 @@ class Row:
     """
     def __init__(self, row_content: Union[str, Column, List[str], List[Column]] = ''):
         if isinstance(row_content, Column):
-            self.columns = [row_content]
+            self.columns = [copy.deepcopy(row_content)]
         elif isinstance(row_content, str):
             self.columns = [Column(text=row_content)]
         elif isinstance(row_content, list):
             self.columns = list()
             for i, rc in enumerate(row_content):
                 if isinstance(rc, Column):
-                    self.columns.append(rc)
+                    self.columns.append(copy.deepcopy(rc))
                 elif isinstance(rc, str):
                     self.columns.append(Column(text=rc))
                 else:
@@ -168,12 +169,11 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row=None, grid_mode=False, select_grid_cells=False, inner_padding=False, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]]=None, select_grid_cells=False, inner_padding=False, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
 
-        self.grid_mode = grid_mode
         self.select_grid_cells = select_grid_cells
         self.inner_padding = inner_padding
 
@@ -205,13 +205,13 @@ class ScrollingPanel:
         self.left = 0
         self.content_top = 0
         self.content_left = 0
+        self.content_right = 0
         self.content_height = 0
         self.content_width = 0
         self.message_lines = None
 
         self.set_header(header_row)
         self.set_rows(rows)
-        # self.set_geometry()
 
     def __enter__(self):
         return self
@@ -221,10 +221,10 @@ class ScrollingPanel:
 
     def set_header(self, header_row):
         if type(header_row) is Row:
-            self.header_row = header_row
+            self.header_row = copy.deepcopy(header_row)
             self.num_header_rows = 1
         elif header_row:
-            self.header_row = Row([Column(header_row)])
+            self.header_row = Row(header_row)
             self.num_header_rows = 1
         else:
             self.header_row = None
@@ -240,17 +240,15 @@ class ScrollingPanel:
                 self.column_widths.append(column.width)
 
         if new_rows:
-            for current_row in new_rows:
-                if isinstance(current_row, HorizontalLine):
-                    row = current_row
-                elif isinstance(current_row, Row):
-                    row = current_row
+            for new_row in new_rows:
+                if isinstance(new_row, Row):
+                    insert_row = copy.deepcopy(new_row)
                 else:
-                    row = Row(row_content=current_row)
+                    insert_row = Row(new_row)
 
-                rows.append(row)
+                rows.append(insert_row)
 
-                for ci, column in enumerate(row.columns):
+                for ci, column in enumerate(insert_row.columns):
                     if ci >= len(self.column_widths):
                         self.column_widths.append(column.width)
                     else:
@@ -268,22 +266,19 @@ class ScrollingPanel:
         self.needs_render = True
         self.top_visible_row_index = 0
 
-        if self.hilighted_row_index >= self.num_rows and self.num_rows > 0:
-            self.hilighted_row_index = self.num_rows - 1
+        if self.hilighted_row_index >= self.num_rows:
+            self.hilighted_row_index = max(self.num_rows - 1, 0)
 
         self.hilighted_col_index = 0
 
         # Since the row contents have changed, we need to recalculate the window geometry
         self.set_geometry()
 
-    def set_hilighted_row(self, new_hilighted_row):
-        if self.hilighted_row_index != new_hilighted_row:
-            self.needs_render = True
-
-        self.hilighted_row_index = new_hilighted_row
-
-    def reset_geometry(self):
-        self.set_geometry()
+    # def set_hilighted_row(self, new_hilighted_row):
+    #     if self.hilighted_row_index != new_hilighted_row:
+    #         self.needs_render = True
+    #
+    #     self.hilighted_row_index = new_hilighted_row
 
     def set_geometry(self, visible=True):
         self.needs_render = True
@@ -326,7 +321,6 @@ class ScrollingPanel:
         if self.window:
             del self.window
 
-        # LOGGER.info('debug_name=%s, self.height=%s, self.width=%s, self.top=%s, self.left=%s', self.debug_name, self.height, self.width, self.top, self.left)
         self.window = curses.newwin(self.height, self.width, self.top, self.left)
         self.window.keypad(True)
 
@@ -342,6 +336,7 @@ class ScrollingPanel:
 
         self.content_top = 1 + self.num_header_rows  # Leave 1 row for the border and then a row for the header, if there is one
         self.content_left = 2  # Left/right are indented by a space, and there is a border
+        self.content_right = self.width - 2  # Left/right are indented by a space, and there is a border
         self.content_height = self.height - 2 - self.num_header_rows  # Account for top/bottom border and header
         self.content_width = self.width - 4  # Account for left/right border and a space on the left/right
 
@@ -375,9 +370,16 @@ class ScrollingPanel:
                 column_width = self.column_widths[ci] + int(self.inner_padding and ci < self.num_cols)
                 text_colour = column.colour
 
+                if x + column_width > self.content_right:
+                    column_width = self.content_right - x
+                    raw_text = raw_text[:column_width]
+
                 padded_text = f'{raw_text: <{column_width}}'
                 self.window.addstr(1, x, padded_text, curses.color_pair(text_colour))
                 x += column_width
+
+                if x >= self.content_right:
+                    break
 
         for ri in range(0, self.content_height):
             row_index = self.top_visible_row_index + ri
@@ -388,17 +390,15 @@ class ScrollingPanel:
                 text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
                 raw_text = ''
                 padded_text = u'{raw_text: <{width}}'.format(raw_text=raw_text, width=self.content_width)
-                self.window.addstr(y, self.content_left, padded_text, curses.color_pair(text_colour))
+                self.window.addstr(y, x, padded_text, curses.color_pair(text_colour))
                 continue
 
             row = self.rows[row_index]
 
             if isinstance(row, HorizontalLine):
-                y = self.content_top + ri
-                text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
                 if row_index == self.hilighted_row_index:
                     text_colour = CursesColourBinding.COLOUR_BLACK_YELLOW
-                elif len(row.columns) > 0:
+                else:
                     text_colour = row.columns[0].colour
                 self.window.hline(y, x, curses.ACS_HLINE, self.content_width, curses.color_pair(text_colour))
                 continue
@@ -412,14 +412,17 @@ class ScrollingPanel:
                 else:
                     text_colour = column.colour
 
-                # This doesn't work right now-- we need to clip and bail on the row if we extend past the right edge
-                # if x + len(raw_text) > self.content_width:
-                #     raw_text = raw_text[:self.content_width - x - 4] + u'...'
-                #     column_width = len(raw_text)
+                if x + column_width > self.content_right:
+                    column_width = self.content_right - x
+                    raw_text = raw_text[:column_width]
 
                 padded_text = f'{raw_text: <{column_width}}'
                 self.window.addstr(y, x, padded_text, curses.color_pair(text_colour))
                 x += column_width
+
+                if x >= self.content_right:
+                    break
+
 
         self.needs_render = False
 

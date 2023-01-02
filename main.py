@@ -33,7 +33,10 @@ class MyMenu(curses_gui.MainMenu):
         self.menu_choices.append(('Display Video Info', self.display_all_video_file_data))
         self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
         self.menu_choices.append((curses_gui.HorizontalLine(), None))
-        self.menu_choices.append(('TEST STUFF', self.test_stuff))
+        self.menu_choices.append(('test_scrolling_panel_grid_mode', self.test_scrolling_panel))
+        self.menu_choices.append(('test_scrolling_panel_select_grid_cells', self.test_scrolling_panel_select_grid_cells))
+        self.menu_choices.append(('test_scrolling_panel_100_rows', self.test_scrolling_panel_100_rows))
+        self.menu_choices.append(('test_scrolling_panel_width', self.test_scrolling_panel_width))
 
     def quit_confirm(self):
         if self.video_files_is_dirty:
@@ -43,14 +46,46 @@ class MyMenu(curses_gui.MainMenu):
         else:
             return True
 
-    # @staticmethod
-    # def test_stuff():
-    #     display_lines = [curses_gui.Row(['1', 'One']), curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']), curses_gui.Row(['333333333333', 'Three']), curses_gui.Row(['4', 'Four']), curses_gui.Row(['555', 'Five']), ]
-    #     with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True) as scrolling_panel:
-    #         scrolling_panel.run()
+    @staticmethod
+    def test_scrolling_panel_width():
+        header_columns = list()
+        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK))
+        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK))
+        header_row = curses_gui.Row(header_columns)
+
+        display_lines = [curses_gui.Row(['1', 'One']),
+                         curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']),
+                         curses_gui.Row(['333333333333', 'Three']),
+                         curses_gui.Row(['4', 'Four']),
+                         curses_gui.HorizontalLine(),
+                         curses_gui.Row(['555', 'Five']), ]
+        with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, width=25, height=20, inner_padding=True) as scrolling_panel:
+            scrolling_panel.run()
 
     @staticmethod
-    def test_stuff():
+    def test_scrolling_panel():
+        display_lines = [curses_gui.Row(['1', 'One']),
+                         curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']),
+                         curses_gui.Row(['333333333333', 'Three']),
+                         curses_gui.Row(['4', 'Four']),
+                         curses_gui.HorizontalLine(),
+                         curses_gui.Row(['555', 'Five']), ]
+        with curses_gui.ScrollingPanel(rows=display_lines, inner_padding=True) as scrolling_panel:
+            scrolling_panel.run()
+
+    @staticmethod
+    def test_scrolling_panel_select_grid_cells():
+        display_lines = [curses_gui.Row(['1', 'One']),
+                         curses_gui.Row(['2', 'Twwwwwwwwwwwwwwwoooo']),
+                         curses_gui.Row(['333333333333', 'Three']),
+                         curses_gui.Row(['4', 'Four']),
+                         curses_gui.HorizontalLine(),
+                         curses_gui.Row(['555', 'Five']), ]
+        with curses_gui.ScrollingPanel(rows=display_lines, inner_padding=True, select_grid_cells=True) as scrolling_panel:
+            scrolling_panel.run()
+
+    @staticmethod
+    def test_scrolling_panel_100_rows():
         import random
         import string
 
@@ -65,14 +100,14 @@ class MyMenu(curses_gui.MainMenu):
                 text_list.append(text)
             display_lines.append(text_list)
         header_columns = list()
-        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
-        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED))
+        header_columns.append(curses_gui.Column('Header Column 1', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK))
+        header_columns.append(curses_gui.Column('Header Column 2', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK))
         header_row = curses_gui.Row(header_columns)
-        with curses_gui.ScrollingPanel(rows=display_lines, grid_mode=True, inner_padding=True, header_row=header_row) as scrolling_panel:
+        with curses_gui.ScrollingPanel(rows=display_lines, inner_padding=True, header_row=header_row) as scrolling_panel:
             scrolling_panel.run()
 
     # @staticmethod
-    # def test_stuff():
+    # def test_thread_dialog():
     #     class MyThread(threading.Thread):
     #         def __init__(self):
     #             super().__init__(daemon=True)
@@ -124,9 +159,9 @@ class MyMenu(curses_gui.MainMenu):
     #                 run_result = imdb_search_results_panel.run()
     #                 if run_result.key == curses_gui.Keycodes.ESCAPE:
     #                     break
-    #
-    # @staticmethod
-    # def test_stuff():
+
+    @staticmethod
+    # def test_selectable_thread_dialog():
     #     class SelectableThread(threading.Thread):
     #         def __init__(self):
     #             super().__init__(daemon=True)
@@ -193,7 +228,7 @@ class MyMenu(curses_gui.MainMenu):
     #         sel.close()
 
     # @staticmethod
-    # def test_stuff():
+    # def test_threaded_dialog():
     #     def my_task():
     #         for i in range(10):
     #             logging.info('Sleeping...')
@@ -242,7 +277,7 @@ class MyMenu(curses_gui.MainMenu):
     #     return threaded_dialog_result
 
     # @staticmethod
-    # def test_stuff():
+    # def test_cancellable_threaded_dialog():
     #     def my_task():
     #         for i in range(10):
     #             logging.info('Sleeping...')
