@@ -135,9 +135,9 @@ class Row:
                 elif isinstance(rc, str):
                     self.columns.append(Column(text=rc))
                 else:
-                    raise Exception('Invalid row_content element %d, type %s', i, type(rc))
+                    self.columns.append(Column(text=str(rc)))
         else:
-            raise Exception('Invalid row_content type %s', type(row_content))
+            self.columns = [Column(text=str(row_content))]
 
 
 class HorizontalLine(Row):
@@ -173,7 +173,7 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]]=None, select_grid_cells=False, inner_padding=False, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]]=None, select_grid_cells=False, inner_padding=False, show_immediately=True, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
@@ -216,6 +216,9 @@ class ScrollingPanel:
 
         self.set_header(header_row)
         self.set_rows(rows)
+
+        if show_immediately:
+            self.show()
 
     def __enter__(self):
         return self
@@ -284,7 +287,12 @@ class ScrollingPanel:
     #
     #     self.hilighted_row_index = new_hilighted_row
 
-    def set_geometry(self, visible=True):
+    def set_geometry(self):
+        orig_window_height = self.height
+        orig_window_width = self.width
+        orig_window_top = self.top
+        orig_window_left = self.left
+
         self.needs_render = True
 
         top = self.initial_top
@@ -322,20 +330,21 @@ class ScrollingPanel:
         else:
             self.left = left
 
-        if self.window:
+        if self.window and (orig_window_height != self.height or orig_window_width != self.width or orig_window_top != self.top or orig_window_left != self.left):
+            if self.panel:
+                self.panel.hide()
+                del self.panel
+                self.panel = None
+
             del self.window
+            self.window = None
 
-        self.window = curses.newwin(self.height, self.width, self.top, self.left)
-        self.window.keypad(True)
+        if not self.window:
+            self.window = curses.newwin(self.height, self.width, self.top, self.left)
+            self.window.keypad(True)
 
-        if self.panel:
-            del self.panel
-
-        self.panel = curses.panel.new_panel(self.window)
-
-        if visible:
-            self.panel.show()
-        else:
+        if not self.panel:
+            self.panel = curses.panel.new_panel(self.window)
             self.panel.hide()
 
         self.content_top = 1 + self.num_header_rows  # Leave 1 row for the border and then a row for the header, if there is one
@@ -352,8 +361,8 @@ class ScrollingPanel:
 
     def show(self):
         if self.panel:
-            self.set_geometry()
-            self.render()
+            # self.set_geometry()
+            self.render(force=True)
             self.panel.show()
             curses.panel.update_panels()
             CURSES_STDSCR.refresh()
@@ -577,6 +586,11 @@ class MessagePanel:
         self.set_message_lines(new_message_lines)
 
     def set_message_lines(self, new_message_lines):
+        orig_window_height = self.height
+        orig_window_width = self.width
+        orig_window_top = self.top
+        orig_window_left = self.left
+
         self.message_lines = new_message_lines
         self.num_rows = len(self.message_lines)
         self.rows_max_width = 0
@@ -597,16 +611,20 @@ class MessagePanel:
         self.top = int((self.stdscr_height - self.height) // 2)
         self.left = int((self.stdscr_width - self.width) // 2)
 
-        if self.window:
+        if self.window and (orig_window_height != self.height or orig_window_width != self.width or orig_window_top != self.top or orig_window_left != self.left):
+            if self.panel:
+                del self.panel
+                self.panel = None
+
             del self.window
+            self.window = None
 
-        self.window = curses.newwin(self.height, self.width, self.top, self.left)
-        self.window.keypad(True)
+        if not self.window:
+            self.window = curses.newwin(self.height, self.width, self.top, self.left)
+            self.window.keypad(True)
 
-        if self.panel:
-            del self.panel
-
-        self.panel = curses.panel.new_panel(self.window)
+        if not self.panel:
+            self.panel = curses.panel.new_panel(self.window)
 
         self.content_top = 1  # Leave 1 row for the border
         self.content_left = 2  # Left/right are indented by a space, and there is a border
@@ -625,7 +643,7 @@ class MessagePanel:
     def show(self):
         if self.panel:
             self.panel.show()
-            self.render()
+            self.render(force=True)
             curses.panel.update_panels()
             CURSES_STDSCR.refresh()
 
@@ -892,7 +910,7 @@ class DialogBox:
 
     def show(self):
         if self.panel:
-            self.render()
+            self.render(force=True)
             self.panel.show()
             curses.panel.update_panels()
             CURSES_STDSCR.refresh()
@@ -1007,9 +1025,9 @@ class MainMenu(ScrollingPanel):
 
         while True:
             self.render()
-            curses.panel.update_panels()
 
-            CURSES_STDSCR.refresh()
+            # curses.panel.update_panels()
+            # CURSES_STDSCR.refresh()
 
             self.window.timeout(-1)
             key = self.window.getch()
@@ -1020,6 +1038,7 @@ class MainMenu(ScrollingPanel):
                     return key
             elif key == Keycodes.RETURN:
                 self.hide()
+
                 try:
                     menu_choice_action = self.menu_choices[self.hilighted_row_index]
                     if menu_choice_action and menu_choice_action[1]:

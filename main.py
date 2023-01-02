@@ -318,7 +318,7 @@ class MyMenu(curses_gui.MainMenu):
                 dialog_box.run()
                 return
 
-        detail_imdb_info = threaded_dialog_result.selectable_thread.callable_result  # type: imdb_utils.IMDBInfo
+        detail_imdb_info: imdb_utils.IMDBInfo = threaded_dialog_result.selectable_thread.callable_result
 
         video_file.imdb_tt = detail_imdb_info.imdb_tt
         video_file.imdb_rating = detail_imdb_info.imdb_rating
@@ -341,7 +341,7 @@ class MyMenu(curses_gui.MainMenu):
                 dialog_box.run()
                 return
 
-        search_imdb_info_list = threaded_dialog_result.selectable_thread.callable_result  # type: List[imdb_utils.IMDBInfo]
+        search_imdb_info_list: List[imdb_utils.IMDBInfo] = threaded_dialog_result.selectable_thread.callable_result
 
         header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
@@ -357,61 +357,42 @@ class MyMenu(curses_gui.MainMenu):
                     return search_imdb_info_list[run_result.row_index]
 
     def display_individual_video_file(self, video_file: imdb_utils.VideoFile):
-        def format_display_lines():
-            json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
-            json_str_lines = json_str.splitlines()
-            return ['Search IMDB', curses_gui.HorizontalLine()] + json_str_lines
-
-        display_lines = format_display_lines()
-        with curses_gui.ScrollingPanel(rows=display_lines, height=0.5, width=0.5) as video_info_panel:
+        with curses_gui.ScrollingPanel(rows=[''], height=0.5, width=0.5) as video_info_panel:
             while True:
+                json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
+                json_str_lines = json_str.splitlines()
+                display_lines = ['Search IMDB', curses_gui.HorizontalLine()] + json_str_lines
+                video_info_panel.set_rows(display_lines)
+                video_info_panel.show()
+
                 run_result = video_info_panel.run()
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     break
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
-                    search_imdb_info = self.search_video_imdb_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
+                    video_info_panel.hide()
 
-                    if search_imdb_info:
+                    if search_imdb_info := self.search_video_imdb_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year):
                         video_file.imdb_tt = search_imdb_info.imdb_tt
                         self.update_video_imdb_info(video_file)
-                        display_lines = format_display_lines()
-                        video_info_panel.set_rows(display_lines)
+
 
     def display_all_video_file_data(self):
-        def format_video_info_lines():
-            max_len = -1
-            for video_file in self.video_files:
-                len_scrubbed_file_name = len(video_file.scrubbed_file_name)
-                max_len = max(max_len, len_scrubbed_file_name)
-
-            num_video_files = len(self.video_files)
-            num_digits = math.floor(math.log10(num_video_files)) + 1
-
-            video_info_lines = list()
-            for i, video_file in enumerate(self.video_files):
-                file_path = video_file.file_path
-                file_name_with_ext = os.path.basename(file_path)
-                filename_parts = os.path.splitext(file_name_with_ext)
-                file_name = filename_parts[0]
-                year_str = f'({video_file.scrubbed_file_year})' if video_file.scrubbed_file_year else ' ' * 6
-                imdb_tt = video_file.imdb_tt
-
-                info = f'[{i:0{num_digits}d}] {video_file.scrubbed_file_name:{max_len}} {year_str} {imdb_tt}'
-                video_info_lines.append(info)
-
-            return video_info_lines
-
-        display_rows = format_video_info_lines()
-        with curses_gui.ScrollingPanel(rows=display_rows) as scrolling_panel:
+        with curses_gui.ScrollingPanel(rows=[''], inner_padding=True, show_immediately=False) as scrolling_panel:
             while True:
+                num_video_files = len(self.video_files)
+                num_digits = math.floor(math.log10(num_video_files)) + 1
+                display_rows = [curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), video_file.imdb_tt, video_file.file_path]) for i, video_file in enumerate(self.video_files)]
+                scrolling_panel.set_rows(display_rows)
+                scrolling_panel.show()
+
                 run_result = scrolling_panel.run()
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     break
                 elif run_result.key == curses_gui.Keycodes.RETURN:
+                    scrolling_panel.hide()
+
                     selected_video_file = self.video_files[run_result.row_index]
                     self.display_individual_video_file(selected_video_file)
-                    display_rows = format_video_info_lines()
-                    scrolling_panel.set_rows(display_rows)
 
     def save_video_file_data(self):
         if not self.video_files:
