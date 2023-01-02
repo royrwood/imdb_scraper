@@ -306,10 +306,32 @@ class MyMenu(curses_gui.MainMenu):
     #
     #     logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
 
+    def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
+        imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, video_file.imdb_tt)
+        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, 'Fetching IMDB Detail Info...')
+        if threaded_dialog_result.dialog_result is not None:
+            return
 
-    def search_video_imdb_info(self, video_file: imdb_utils.VideoFile):
-        search_imdb_task = functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.year)
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(search_imdb_task, 'Fetching IMDB Search Info...')
+        if threaded_dialog_result.selectable_thread.callable_exception:
+            callable_exception = threaded_dialog_result.selectable_thread.callable_exception
+            with curses_gui.DialogBox(prompt=[f'Exception occurred while fetching IMDB detail results: {callable_exception}'], buttons_text=['OK']) as dialog_box:
+                dialog_box.run()
+                return
+
+        detail_imdb_info = threaded_dialog_result.selectable_thread.callable_result  # type: imdb_utils.IMDBInfo
+
+        video_file.imdb_tt = detail_imdb_info.imdb_tt
+        video_file.imdb_rating = detail_imdb_info.imdb_rating
+        video_file.imdb_name = detail_imdb_info.imdb_name
+        video_file.imdb_year = detail_imdb_info.imdb_year
+        video_file.imdb_genres = detail_imdb_info.imdb_genres
+        video_file.imdb_plot = detail_imdb_info.imdb_plot
+
+        self.video_files_is_dirty = True
+
+    def search_video_imdb_info(self, file_name: str, year: Optional[int] = None):
+        imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, year)
+        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, 'Fetching IMDB Search Info...')
         if threaded_dialog_result.dialog_result is not None:
             return
 
@@ -330,22 +352,9 @@ class MyMenu(curses_gui.MainMenu):
             while True:
                 run_result = imdb_search_results_panel.run()
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
-                    break
+                    return None
                 elif run_result.key == curses_gui.Keycodes.RETURN:
-                    search_imdb_info = search_imdb_info_list[run_result.row_index]
-
-                    imdb_response_text = imdb_utils.get_imdb_tt_info(search_imdb_info.imdb_tt)
-                    detail_imdb_info = imdb_utils.parse_imdb_tt_results(imdb_response_text, search_imdb_info.imdb_tt)
-
-                    video_file.imdb_tt = detail_imdb_info.imdb_tt
-                    video_file.imdb_rating = detail_imdb_info.imdb_rating
-                    video_file.imdb_name = detail_imdb_info.imdb_name
-                    video_file.imdb_year = detail_imdb_info.imdb_year
-                    video_file.imdb_genres = detail_imdb_info.imdb_genres
-
-                    self.video_files_is_dirty = True
-
-                    break
+                    return search_imdb_info_list[run_result.row_index]
 
     def display_individual_video_file(self, video_file: imdb_utils.VideoFile):
         def format_display_lines():
@@ -360,9 +369,13 @@ class MyMenu(curses_gui.MainMenu):
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     break
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
-                    self.search_video_imdb_info(video_file)
-                    display_lines = format_display_lines()
-                    video_info_panel.set_rows(display_lines)
+                    search_imdb_info = self.search_video_imdb_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
+
+                    if search_imdb_info:
+                        video_file.imdb_tt = search_imdb_info.imdb_tt
+                        self.update_video_imdb_info(video_file)
+                        display_lines = format_display_lines()
+                        video_info_panel.set_rows(display_lines)
 
     def display_all_video_file_data(self):
         def format_video_info_lines():
@@ -380,7 +393,7 @@ class MyMenu(curses_gui.MainMenu):
                 file_name_with_ext = os.path.basename(file_path)
                 filename_parts = os.path.splitext(file_name_with_ext)
                 file_name = filename_parts[0]
-                year_str = f'({video_file.year})' if video_file.year else ' ' * 6
+                year_str = f'({video_file.scrubbed_file_year})' if video_file.scrubbed_file_year else ' ' * 6
                 imdb_tt = video_file.imdb_tt
 
                 info = f'[{i:0{num_digits}d}] {video_file.scrubbed_file_name:{max_len}} {year_str} {imdb_tt}'

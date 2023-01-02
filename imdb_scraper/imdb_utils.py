@@ -11,12 +11,13 @@ import requests
 class VideoFile:
     file_path: str = ''
     scrubbed_file_name: str = ''
-    year: int = 0
+    scrubbed_file_year: int = 0
     imdb_tt: str = ''
     imdb_name: str = ''
     imdb_year: str = ''
     imdb_rating: str = ''
     imdb_genres: List[str] = None
+    imdb_plot: str = None
 
 
 @dataclasses.dataclass
@@ -60,6 +61,12 @@ def get_imdb_search_results(video_name: str, year: int = 0) -> str:
     return imdb_response_text
 
 
+def get_parse_imdb_tt_info(imdb_tt: str) -> IMDBInfo:
+    imdb_response_text = get_imdb_tt_info(imdb_tt)
+
+    return parse_imdb_tt_results(imdb_response_text, imdb_tt)
+
+
 def get_imdb_tt_info(imdb_tt: str) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',
@@ -95,7 +102,7 @@ def parse_imdb_search_results(imdb_response_text: str) -> List[IMDBInfo]:
     return match_video_files
 
 
-def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str):
+def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero-title-block__title']/text()").get()
     imdb_rating = imdb_response_selector.xpath("//div[@data-testid='hero-rating-bar__aggregate-rating__score']/span/text()").get()
@@ -155,7 +162,7 @@ def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_toke
                 continue
 
             scrubbed_video_file_name, year = scrub_video_file_name(filename_no_extension, filename_metadata_tokens)
-            video_file = VideoFile(file_path=file_path, scrubbed_file_name=scrubbed_video_file_name, year=year)
+            video_file = VideoFile(file_path=file_path, scrubbed_file_name=scrubbed_video_file_name, scrubbed_file_year=year)
             video_files.append(video_file)
 
     return video_files
