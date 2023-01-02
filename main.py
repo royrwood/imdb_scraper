@@ -328,12 +328,16 @@ class MyMenu(curses_gui.MainMenu):
                     display_row = curses_gui.Row([' * ', imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year])
                     display_rows[run_result.row_index] = display_row
                     imdb_search_results_panel.set_rows(display_rows)
+                    video_file.imdb_tt = imdb_info.imdb_tt
         self.video_files_is_dirty = True
 
     def display_individual_video_file(self, video_file: imdb_utils.VideoFile):
-        json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
-        json_str_lines = json_str.splitlines()
-        display_lines = ['Search IMDB', curses_gui.HorizontalLine()] + json_str_lines
+        def format_display_lines():
+            json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
+            json_str_lines = json_str.splitlines()
+            return ['Search IMDB', curses_gui.HorizontalLine()] + json_str_lines
+
+        display_lines = format_display_lines()
         with curses_gui.ScrollingPanel(rows=display_lines, height=0.5, width=0.5) as video_info_panel:
             while True:
                 run_result = video_info_panel.run()
@@ -341,6 +345,8 @@ class MyMenu(curses_gui.MainMenu):
                     break
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
                     self.update_video_imdb_info(video_file)
+                    display_lines = format_display_lines()
+                    video_info_panel.set_rows(display_lines)
 
     def display_all_video_file_data(self):
         max_len = -1
@@ -360,7 +366,7 @@ class MyMenu(curses_gui.MainMenu):
             year_str = f'({video_file.year})' if video_file.year else ' ' * 6
             imdb_tt = video_file.imdb_tt
 
-            info = f'[{i:0{num_digits}d}] {video_file.scrubbed_file_name:{max_len}} {year_str} {imdb_tt}]'
+            info = f'[{i:0{num_digits}d}] {video_file.scrubbed_file_name:{max_len}} {year_str} {imdb_tt}'
             video_info_lines.append(info)
 
         with curses_gui.ScrollingPanel(rows=video_info_lines) as scrolling_panel:
