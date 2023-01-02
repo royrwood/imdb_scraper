@@ -26,7 +26,13 @@ class IMDBInfo:
     imdb_year: str = ''
     imdb_rating: str = ''
     imdb_genres: List[str] = None
+    imdb_plot: str = ''
 
+
+def get_parse_imdb_search_results(video_name: str, year: int = 0) -> List[IMDBInfo]:
+    imdb_response_text = get_imdb_search_results(video_name, year)
+
+    return parse_imdb_search_results(imdb_response_text)
 
 def get_imdb_search_results(video_name: str, year: int = 0) -> str:
     headers = {
@@ -41,6 +47,10 @@ def get_imdb_search_results(video_name: str, year: int = 0) -> str:
         url += f'+{year}'
 
     imdb_response = requests.get(url, headers=headers)
+
+    if imdb_response.status_code != 200:
+        raise Exception(f'HTTP {imdb_response.status_code} while fetching search results for {video_name}')
+
     imdb_response_text = imdb_response.text
 
     # For testing, save a copy of the file
@@ -85,12 +95,14 @@ def parse_imdb_search_results(imdb_response_text: str) -> List[IMDBInfo]:
     return match_video_files
 
 
-def parse_imdb_tt_results(imdb_response_text: str, video_file: VideoFile):
+def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str):
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
+    imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero-title-block__title']/text()").get()
     imdb_rating = imdb_response_selector.xpath("//div[@data-testid='hero-rating-bar__aggregate-rating__score']/span/text()").get()
     imdb_genres = imdb_response_selector.xpath("//div[@data-testid='genres']/div/a/span/text()").getall()
     imdb_plot = imdb_response_selector.xpath("//span[@data-testid='plot-xl']/text()").get()
-    # LOGGER.info('Found: imdb_rating="%s", imdb_genres="%s", imdb_plot="%s"', imdb_rating, imdb_genres, imdb_plot)
+    imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[1]/a/text()").get()
+    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year)
 
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):

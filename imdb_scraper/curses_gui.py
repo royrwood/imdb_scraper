@@ -81,13 +81,17 @@ CURSES_STDSCR: CursesStdscrType = CursesStdscrType()
 class SelectableThread(threading.Thread):
     def __init__(self, callable_task):
         super().__init__(daemon=True)
-        self.callable_task = callable_task
+        self.callable_task: Callable = callable_task
         self.callable_result = None
+        self.callable_exception: Exception = None
         self.read_pipe_fd, self.write_pipe_fd = os.pipe()
 
     def run(self) -> None:
         if self.callable_task:
-            self.callable_result = self.callable_task()
+            try:
+                self.callable_result = self.callable_task()
+            except Exception as ex:
+                self.callable_exception = ex
         os.write(self.write_pipe_fd, b'\n')
         os.close(self.write_pipe_fd)
 
