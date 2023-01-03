@@ -12,6 +12,7 @@ import selectors
 import sys
 import threading
 import time
+import traceback
 from typing import List, Optional
 
 import imdb_scraper.imdb_utils
@@ -33,6 +34,7 @@ class MyMenu(curses_gui.MainMenu):
         self.menu_choices.append(('Save Video Info', self.save_video_file_data))
         self.menu_choices.append(('Display Video Info', self.display_all_video_file_data))
         self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
+        self.menu_choices.append(('Update Video Info', self.update_all_video_file_data))
         self.menu_choices.append((curses_gui.HorizontalLine(), None))
         self.menu_choices.append(('test_scrolling_panel_grid_mode', self.test_scrolling_panel))
         self.menu_choices.append(('test_scrolling_panel_select_grid_cells', self.test_scrolling_panel_select_grid_cells))
@@ -305,6 +307,21 @@ class MyMenu(curses_gui.MainMenu):
     #     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(my_task, 'Waiting for background task to complete...')
     #
     #     logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
+    @staticmethod
+    def show_exception_details(exc_type, exc_value, exc_traceback):
+        message_lines = [f'Caught an exception: {exc_value}']
+        exception_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        for exception_line in exception_lines:
+            for line in exception_line.split('\n'):
+                if line.strip():
+                    message_lines.append(line)
+
+        for l in message_lines:
+            logging.error(l)
+
+        with curses_gui.MessagePanel(message_lines) as message_panel:
+            message_panel.run()
+            return
 
     def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
         imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, video_file.imdb_tt)
@@ -312,11 +329,10 @@ class MyMenu(curses_gui.MainMenu):
         if threaded_dialog_result.dialog_result is not None:
             return
 
-        if threaded_dialog_result.selectable_thread.callable_exception:
-            callable_exception = threaded_dialog_result.selectable_thread.callable_exception
-            with curses_gui.DialogBox(prompt=[f'Exception occurred while fetching IMDB detail results: {callable_exception}'], buttons_text=['OK']) as dialog_box:
-                dialog_box.run()
-                return
+        if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
+            exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
+            self.show_exception_details(exc_type, exc_value, exc_traceback)
+            return
 
         detail_imdb_info: imdb_utils.IMDBInfo = threaded_dialog_result.selectable_thread.callable_result
 
@@ -335,11 +351,10 @@ class MyMenu(curses_gui.MainMenu):
         if threaded_dialog_result.dialog_result is not None:
             return
 
-        if threaded_dialog_result.selectable_thread.callable_exception:
-            callable_exception = threaded_dialog_result.selectable_thread.callable_exception
-            with curses_gui.DialogBox(prompt=[f'Exception occurred while fetching IMDB search results: {callable_exception}'], buttons_text=['OK']) as dialog_box:
-                dialog_box.run()
-                return
+        if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
+            exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
+            self.show_exception_details(exc_type, exc_value, exc_traceback)
+            return
 
         search_imdb_info_list: List[imdb_utils.IMDBInfo] = threaded_dialog_result.selectable_thread.callable_result
 
@@ -377,11 +392,19 @@ class MyMenu(curses_gui.MainMenu):
 
 
     def display_all_video_file_data(self):
-        with curses_gui.ScrollingPanel(rows=[''], inner_padding=True, show_immediately=False) as scrolling_panel:
+        header_columns = [curses_gui.Column('', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('YEAR', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('IMDB-TT', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('FILE PATH', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          ]
+        header_row = curses_gui.Row(header_columns)
+
+        with curses_gui.ScrollingPanel(rows=[''], header_row=header_row, inner_padding=True, show_immediately=False) as scrolling_panel:
             while True:
                 num_video_files = len(self.video_files)
                 num_digits = math.floor(math.log10(num_video_files)) + 1
-                display_rows = [curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), video_file.imdb_tt, video_file.file_path]) for i, video_file in enumerate(self.video_files)]
+                display_rows = [curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), f'[{video_file.imdb_tt}]', video_file.file_path]) for i, video_file in enumerate(self.video_files)]
                 scrolling_panel.set_rows(display_rows)
                 scrolling_panel.show()
 
@@ -393,6 +416,16 @@ class MyMenu(curses_gui.MainMenu):
 
                     selected_video_file = self.video_files[run_result.row_index]
                     self.display_individual_video_file(selected_video_file)
+
+    def update_all_video_file_data(self):
+        for i, video_file in enumerate(self.video_files):
+            if video_file.imdb_tt:
+                continue
+            elif search_imdb_info := self.search_video_imdb_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, video_file.file_path):
+                video_file.imdb_tt = search_imdb_info.imdb_tt
+                self.update_video_imdb_info(video_file)
+            else:
+                break
 
     def save_video_file_data(self):
         if not self.video_files:

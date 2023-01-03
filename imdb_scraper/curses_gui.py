@@ -83,15 +83,23 @@ class SelectableThread(threading.Thread):
         super().__init__(daemon=True)
         self.callable_task: Callable = callable_task
         self.callable_result = None
-        self.callable_exception: Exception = None
+        self.callable_exception_info_tuple: Optional[Exception] = None
         self.read_pipe_fd, self.write_pipe_fd = os.pipe()
 
     def run(self) -> None:
         if self.callable_task:
+            # noinspection PyBroadException
             try:
                 self.callable_result = self.callable_task()
-            except Exception as ex:
-                self.callable_exception = ex
+            except Exception:
+                self.callable_exception_info_tuple = sys.exc_info()
+
+                # exc_type, exc_value, exc_traceback = sys.exc_info()
+                # logging.error(u'Caught an exception: %s', exc_value)
+                # exception_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+                # for l in exception_lines:
+                #     logging.error(l.strip())
+
         os.write(self.write_pipe_fd, b'\n')
         os.close(self.write_pipe_fd)
 
@@ -281,11 +289,11 @@ class ScrollingPanel:
         # Since the row contents have changed, we need to recalculate the window geometry
         self.set_geometry()
 
-    # def set_hilighted_row(self, new_hilighted_row):
-    #     if self.hilighted_row_index != new_hilighted_row:
-    #         self.needs_render = True
-    #
-    #     self.hilighted_row_index = new_hilighted_row
+    def set_hilighted_row(self, new_hilighted_row):
+        if self.hilighted_row_index != new_hilighted_row:
+            self.needs_render = True
+
+        self.hilighted_row_index = new_hilighted_row
 
     def set_geometry(self):
         orig_window_height = self.height

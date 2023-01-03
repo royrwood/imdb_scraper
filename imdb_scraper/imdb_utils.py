@@ -47,7 +47,7 @@ def get_imdb_search_results(video_name: str, year: int = 0) -> str:
     if year:
         url += f'+{year}'
 
-    imdb_response = requests.get(url, headers=headers)
+    imdb_response = requests.get(url, headers=headers, timeout=(3.05, 27))
 
     if imdb_response.status_code != 200:
         raise Exception(f'HTTP {imdb_response.status_code} while fetching search results for {video_name}')
@@ -76,7 +76,7 @@ def get_imdb_tt_info(imdb_tt: str) -> str:
     imdb_tt = imdb_tt
     url = f'https://www.imdb.com/title/{imdb_tt}/'
 
-    imdb_response = requests.get(url, headers=headers)
+    imdb_response = requests.get(url, headers=headers, timeout=(3.05, 27))
     imdb_response_text = imdb_response.text
 
     # For testing, save a copy of the file
