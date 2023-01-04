@@ -413,11 +413,21 @@ class MyMenu(curses_gui.MainMenu):
         if auto_search:
             imdb_search_results = self.get_imdb_search_info(video_file) or []  # type: List[imdb_utils.IMDBInfo]
             imdb_detail_results = [None] * len(imdb_search_results) # type: List[Optional[imdb_utils.IMDBInfo]]
+
+            if imdb_search_results:
+                imdb_search_result = imdb_search_results[0]
+                imdb_detail_result = self.get_imdb_detail_info(imdb_search_result.imdb_tt)
+                if imdb_detail_result:
+                    imdb_detail_results[0] = imdb_detail_result
+
         else:
             imdb_search_results = []  # type: List[imdb_utils.IMDBInfo]
             imdb_detail_results = []  # type: List[Optional[imdb_utils.IMDBInfo]]
 
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
+            if auto_search and imdb_detail_results:
+                video_info_panel.set_hilighted_row(imdb_detail_row_offset)
+
             while True:
                 display_lines = ['Search IMDB', 'Clear IMDB Info', curses_gui.HorizontalLine()]
 
