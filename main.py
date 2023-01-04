@@ -408,7 +408,7 @@ class MyMenu(curses_gui.MainMenu):
         return search_imdb_info_list
 
     def display_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search = False):
-        imdb_detail_row_offset = 3
+        imdb_detail_row_offset = 5
 
         if auto_search:
             imdb_search_results = self.get_imdb_search_info(video_file) or []  # type: List[imdb_utils.IMDBInfo]
@@ -419,7 +419,7 @@ class MyMenu(curses_gui.MainMenu):
 
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
             while True:
-                display_lines = ['Search IMDB', 'Clear IMDB Info', curses_gui.HorizontalLine()]
+                display_lines = ['Search IMDB', 'Clear IMDB Info', 'Save Changes', 'Discard Changes', curses_gui.HorizontalLine()]
 
                 if imdb_search_results:
                     max_name_length = 0
