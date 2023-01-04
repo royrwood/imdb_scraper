@@ -394,7 +394,7 @@ class MyMenu(curses_gui.MainMenu):
         file_name = video_file.scrubbed_file_name
         file_year = video_file.scrubbed_file_year
         imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, 'Fetching IMDB Search Info...')
+        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, f'Fetching IMDB Search Info for "{file_name}"...')
         if threaded_dialog_result.dialog_result is not None:
             return None
 
@@ -407,11 +407,15 @@ class MyMenu(curses_gui.MainMenu):
 
         return search_imdb_info_list
 
-    def display_individual_video_file(self, video_file: imdb_utils.VideoFile):
-        imdb_search_results = []  # type: List[imdb_utils.IMDBInfo]
-        imdb_detail_results = []  # type: List[Optional[imdb_utils.IMDBInfo]]
-
+    def display_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search = False):
         imdb_detail_row_offset = 3
+
+        if auto_search:
+            imdb_search_results = self.get_imdb_search_info(video_file) or []  # type: List[imdb_utils.IMDBInfo]
+            imdb_detail_results = [None] * len(imdb_search_results) # type: List[Optional[imdb_utils.IMDBInfo]]
+        else:
+            imdb_search_results = []  # type: List[imdb_utils.IMDBInfo]
+            imdb_detail_results = []  # type: List[Optional[imdb_utils.IMDBInfo]]
 
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
             while True:
@@ -505,7 +509,7 @@ class MyMenu(curses_gui.MainMenu):
             #     video_file.imdb_tt = search_imdb_info.imdb_tt
             #     self.update_video_imdb_info(video_file)
             else:
-                break
+                self.display_individual_video_file(video_file, True)
 
     def save_video_file_data(self):
         if not self.video_files:
