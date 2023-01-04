@@ -463,6 +463,7 @@ class MyMenu(curses_gui.MainMenu):
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
                     imdb_search_results = self.get_imdb_search_info(video_file)
                     imdb_detail_results = [None] * len(imdb_search_results)
+                    video_info_panel.set_hilighted_row(imdb_detail_row_offset)
 
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 1:
                     video_file.imdb_tt = ''
