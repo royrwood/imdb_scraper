@@ -505,10 +505,11 @@ class MyMenu(curses_gui.MainMenu):
         for i, video_file in enumerate(self.video_files):
             if video_file.imdb_tt:
                 continue
-            # elif search_imdb_info := self.search_video_imdb_info_simple(video_file.scrubbed_file_name, video_file.scrubbed_file_year, video_file.file_path):
-            #     video_file.imdb_tt = search_imdb_info.imdb_tt
-            #     self.update_video_imdb_info(video_file)
             else:
+                with curses_gui.DialogBox(prompt=[f'Search IMDB for "{video_file.scrubbed_file_name}"?'], buttons_text=['OK', 'Cancel']) as dialog_box:
+                    if dialog_box.run() != 'OK':
+                        break
+
                 self.display_individual_video_file(video_file, True)
 
     def save_video_file_data(self):
