@@ -129,8 +129,8 @@ class MyMenu(curses_gui.MainMenu):
                 if line.strip():
                     message_lines.append(line)
 
-        for l in message_lines:
-            logging.error(l)
+        for line in message_lines:
+            logging.error(line)
 
         with curses_gui.MessagePanel(message_lines) as message_panel:
             message_panel.run()
@@ -273,7 +273,7 @@ class MyMenu(curses_gui.MainMenu):
                     if video_file.imdb_tt:
                         display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.imdb_name, video_file.imdb_year, f'{video_file.imdb_rating}', f'[{video_file.imdb_tt}]', video_file.file_path]))
                     else:
-                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), f'{video_file.imdb_rating}', f'[{video_file.imdb_tt}]', video_file.file_path]))
+                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, video_file.scrubbed_file_year, f'{video_file.imdb_tt}', video_file.file_path]))
                 scrolling_panel.set_rows(display_rows)
                 scrolling_panel.show()
 
