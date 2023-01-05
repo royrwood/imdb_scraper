@@ -2,16 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import dataclasses
-import datetime
 import functools
 import logging
-import os
 import json
 import math
-import selectors
-import sys
-import threading
-import time
 import traceback
 from typing import List, Optional, Tuple
 
@@ -126,187 +120,6 @@ class MyMenu(curses_gui.MainMenu):
         with curses_gui.ScrollingPanel(rows=display_lines, inner_padding=True, header_row=header_row) as scrolling_panel:
             scrolling_panel.run()
 
-    # @staticmethod
-    # def test_thread_dialog():
-    #     class MyThread(threading.Thread):
-    #         def __init__(self):
-    #             super().__init__(daemon=True)
-    #             self.keep_going = True
-    #             self.imdb_search_response = None
-    #
-    #         def run(self) -> None:
-    #             logging.info('Fetching IMDB info...')
-    #             self.imdb_search_response = imdb_utils.get_imdb_search_results('21 jump street')
-    #             logging.info('Fetched IMDB info')
-    #
-    #             logging.info('MyThread exit.')
-    #
-    #     logging.info('Creating DialogBox')
-    #     time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-    #     with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
-    #         logging.info('Creating MyThread')
-    #         my_thread = MyThread()
-    #         logging.info('Starting MyThread')
-    #         my_thread.start()
-    #
-    #         while True:
-    #             logging.info('Calling DialogBox.run')
-    #             result = dialog_box.run(key_timeout_msec=100)
-    #             logging.info('DialogBox result = %s', result)
-    #             if result == -1:
-    #                 logging.info('User pressed Keycodes.ESCAPE')
-    #                 break
-    #             else:
-    #                 time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-    #                 dialog_box.set_prompt(time_str)
-    #
-    #             if my_thread.imdb_search_response:
-    #                 logging.info('MyThread got the IMDB data')
-    #                 break
-    #
-    #         logging.info('Stopping MyThread')
-    #         my_thread.keep_going = False
-    #
-    #         imdb_info_list = imdb_utils.parse_imdb_search_results(my_thread.imdb_search_response)
-    #
-    #         header_columns = [curses_gui.Column('IMDB REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
-    #                           curses_gui.Column('IMDB NAME', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED),
-    #                           curses_gui.Column('IMDB YEAR', colour=curses_gui.CursesColourBinding.COLOUR_BLACK_RED)]
-    #         header_row = curses_gui.Row(header_columns)
-    #         display_lines = [curses_gui.Row([imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in imdb_info_list]
-    #         with curses_gui.ScrollingPanel(rows=display_lines, header_row=header_row, inner_padding=True) as imdb_search_results_panel:
-    #             while True:
-    #                 run_result = imdb_search_results_panel.run()
-    #                 if run_result.key == curses_gui.Keycodes.ESCAPE:
-    #                     break
-
-    # @staticmethod
-    # def test_selectable_thread_dialog():
-    #     class SelectableThread(threading.Thread):
-    #         def __init__(self):
-    #             super().__init__(daemon=True)
-    #             self.imdb_search_response = None
-    #             self.read_pipe_fd, self.write_pipe_fd = os.pipe()
-    #             self.read_buffer = ''
-    #
-    #         def process_pipe_read(self):
-    #             text = os.read(my_thread.read_pipe_fd, 1024)
-    #             if text:
-    #                 self.read_buffer += text.decode('ascii')
-    #
-    #         def get_message(self):
-    #             read_message = None
-    #             newline_i = self.read_buffer.find('\n')
-    #             if newline_i >= 0:
-    #                 read_message = self.read_buffer[:newline_i]
-    #                 self.read_buffer = self.read_buffer[newline_i + 1:]
-    #             return read_message
-    #
-    #         def run(self) -> None:
-    #             for i in range(10):
-    #                 os.write(self.write_pipe_fd, bytes(f'SelectableThread pass {i}\n', 'ascii'))
-    #                 time.sleep(1.0)
-    #
-    #             logging.info('SelectableThread closing self.write_pipe_fd')
-    #             os.close(self.write_pipe_fd)
-    #
-    #             logging.info('SelectableThread exit.')
-    #
-    #     logging.info('Creating DialogBox')
-    #     time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-    #     with curses_gui.DialogBox(prompt=[time_str], buttons_text=['OK', 'Cancel']) as dialog_box:
-    #         dialog_box.show()
-    #
-    #         logging.info('Creating SelectableThread')
-    #         my_thread = SelectableThread()
-    #         logging.info('Starting SelectableThread')
-    #         my_thread.start()
-    #
-    #         sel = selectors.DefaultSelector()
-    #         sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
-    #
-    #         while my_thread.is_alive():
-    #             time_str = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")
-    #             dialog_box.set_prompt(time_str, refresh=True)
-    #
-    #             # events = sel.select(0.5)
-    #             events = sel.select()
-    #
-    #             if not events:
-    #                 continue
-    #
-    #             for selector_key, event_mask in events:
-    #                 if selector_key.data == 'PIPE':
-    #                     my_thread.process_pipe_read()
-    #                     while True:
-    #                         message = my_thread.get_message()
-    #                         if not message:
-    #                             break
-    #                         logging.info(f'Got message from worker thread: {message}')
-    #
-    #         sel.unregister(my_thread.read_pipe_fd)
-    #         sel.close()
-
-    # @staticmethod
-    # def test_threaded_dialog():
-    #     def my_task():
-    #         for i in range(10):
-    #             logging.info('Sleeping...')
-    #             time.sleep(1.0)
-    #         return 'Work Complete'
-    #
-    #     logging.info('Creating SelectableThread')
-    #     my_thread = curses_gui.SelectableThread(my_task)
-    #     logging.info('Starting SelectableThread')
-    #     my_thread.start()
-    #
-    #     sel = selectors.DefaultSelector()
-    #     sel.register(my_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
-    #     sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
-    #
-    #     threaded_dialog_result = curses_gui.ThreadedDialogResult(selectable_thread=my_thread)
-    #
-    #     logging.info('Creating DialogBox')
-    #     with curses_gui.DialogBox(prompt=[datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f")], buttons_text=['OK', 'Cancel'], show_immediately=True) as dialog_box:
-    #         keep_going = True
-    #
-    #         while keep_going:
-    #             # The timeout on sel.select() is 0.5s, so we will update the dialog prompt as we wait
-    #             dialog_box.set_prompt(datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S.%f"), refresh=True)
-    #
-    #             if not my_thread.is_alive():
-    #                 keep_going = False
-    #             elif events := sel.select(0.5):
-    #                 for selector_key, event_mask in events:
-    #                     if selector_key.data == 'PIPE':
-    #                         logging.info(f'Got result from worker thread: {my_thread.callable_result}')
-    #                     elif selector_key.data == 'STDIN':
-    #                         logging.info(f'Ready to read sys.stdin')
-    #                         dialog_box_result = dialog_box.run(single_key=True)
-    #                         logging.info(f'Got {dialog_box_result=}')
-    #                         if dialog_box_result == 'Cancel':
-    #                             keep_going = False
-    #                             threaded_dialog_result.dialog_result = dialog_box_result
-    #
-    #         sel.unregister(my_thread.read_pipe_fd)
-    #         sel.unregister(sys.stdin)
-    #         sel.close()
-    #
-    #     # TODO: Clear stdin for stacked keypresses?
-    #
-    #     return threaded_dialog_result
-
-    # @staticmethod
-    # def test_cancellable_threaded_dialog():
-    #     def my_task():
-    #         for i in range(10):
-    #             logging.info('Sleeping...')
-    #             time.sleep(1.0)
-    #         return 'Work Complete'
-    #
-    #     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(my_task, 'Waiting for background task to complete...')
-    #
-    #     logging.info(f'Got final threaded_dialog_result: dialog_result={threaded_dialog_result.dialog_result}, callable_result={threaded_dialog_result.selectable_thread.callable_result}')
     @staticmethod
     def show_exception_details(exc_type, exc_value, exc_traceback):
         message_lines = [f'Caught an exception: {exc_value}']
@@ -323,57 +136,6 @@ class MyMenu(curses_gui.MainMenu):
             message_panel.run()
             return
 
-    # def update_video_imdb_info(self, video_file: imdb_utils.VideoFile):
-    #     imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, video_file.imdb_tt)
-    #     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, 'Fetching IMDB Detail Info...')
-    #     if threaded_dialog_result.dialog_result is not None:
-    #         return
-    #
-    #     if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
-    #         exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
-    #         self.show_exception_details(exc_type, exc_value, exc_traceback)
-    #         return
-    #
-    #     detail_imdb_info: imdb_utils.IMDBInfo = threaded_dialog_result.selectable_thread.callable_result
-    #
-    #     video_file.imdb_tt = detail_imdb_info.imdb_tt
-    #     video_file.imdb_rating = detail_imdb_info.imdb_rating
-    #     video_file.imdb_name = detail_imdb_info.imdb_name
-    #     video_file.imdb_year = detail_imdb_info.imdb_year
-    #     video_file.imdb_genres = detail_imdb_info.imdb_genres
-    #     video_file.imdb_plot = detail_imdb_info.imdb_plot
-    #
-    #     self.video_files_is_dirty = True
-
-    # def search_video_imdb_info(self, video_file: imdb_utils.VideoFile):
-    #     file_name = video_file.scrubbed_file_name
-    #     file_year = video_file.scrubbed_file_year
-    #     imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
-    #     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, 'Fetching IMDB Search Info...')
-    #     if threaded_dialog_result.dialog_result is not None:
-    #         return
-    #
-    #     if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
-    #         exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
-    #         self.show_exception_details(exc_type, exc_value, exc_traceback)
-    #         return
-    #
-    #     search_imdb_info_list: List[imdb_utils.IMDBInfo] = threaded_dialog_result.selectable_thread.callable_result
-    #
-    #     header_columns = [curses_gui.Column('*', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
-    #                       curses_gui.Column('REFNUM', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
-    #                       curses_gui.Column('NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
-    #                       curses_gui.Column('YEAR', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK)]
-    #     header_row = curses_gui.Row(header_columns)
-    #     display_rows = [curses_gui.Row(['', imdb_info.imdb_tt, imdb_info.imdb_name, imdb_info.imdb_year]) for imdb_info in search_imdb_info_list]
-    #     with curses_gui.ScrollingPanel(rows=display_rows, header_row=header_row, inner_padding=True) as imdb_search_results_panel:
-    #         while True:
-    #             run_result = imdb_search_results_panel.run()
-    #             if run_result.key == curses_gui.Keycodes.ESCAPE:
-    #                 return None
-    #             elif run_result.key == curses_gui.Keycodes.RETURN:
-    #                 return search_imdb_info_list[run_result.row_index]
-
     def get_imdb_detail_info(self, imdb_tt: str) -> Optional[imdb_utils.IMDBInfo]:
         imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt)
         threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, 'Fetching IMDB Detail Info...')
@@ -389,9 +151,7 @@ class MyMenu(curses_gui.MainMenu):
 
         return detail_imdb_info
 
-    def get_imdb_search_info(self, video_file: imdb_utils.VideoFile) -> Optional[List[imdb_utils.IMDBInfo]]:
-        file_name = video_file.scrubbed_file_name
-        file_year = video_file.scrubbed_file_year
+    def get_imdb_search_info(self, file_name, file_year) -> Optional[List[imdb_utils.IMDBInfo]]:
         imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
         threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, f'Fetching IMDB Search Info for "{file_name}"...')
         if threaded_dialog_result.dialog_result is not None:
@@ -407,9 +167,10 @@ class MyMenu(curses_gui.MainMenu):
         return search_imdb_info_list
 
     @staticmethod
-    def setup_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], auto_search: bool) -> Tuple[List[str], int]:
-        display_lines = ['Search IMDB', 'Clear IMDB Info', curses_gui.HorizontalLine()]
-        imdb_detail_row_offset = len(display_lines)
+    def setup_individual_video_file_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo]) -> Tuple[List[str], int, int]:
+        display_lines = ['Search IMDB', curses_gui.HorizontalLine()]
+        imdb_detail_start_row = len(display_lines)
+        imdb_detail_end_row = imdb_detail_start_row + len(imdb_search_results)
 
         if imdb_search_results:
             max_name_length = 0
@@ -432,30 +193,32 @@ class MyMenu(curses_gui.MainMenu):
 
         display_lines.extend(json_str_lines)
 
-        return display_lines, imdb_detail_row_offset
+        return display_lines, imdb_detail_start_row, imdb_detail_end_row
+
+    def setup_search_results_detail_results(self, video_file: imdb_utils.VideoFile, auto_search: bool) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
+        if not auto_search:
+            return [], []
+
+        imdb_search_results = self.get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
+        imdb_detail_results = [None] * len(imdb_search_results)
+
+        if imdb_search_results and (imdb_search_result := imdb_search_results[0]):
+            if imdb_detail_result := self.get_imdb_detail_info(imdb_search_result.imdb_tt):
+                imdb_detail_results[0] = imdb_detail_result
+
+        return imdb_search_results, imdb_detail_results
 
     def display_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search=False):
-        if not auto_search:
-            imdb_search_results = []  # type: List[imdb_utils.IMDBInfo]
-            imdb_detail_results = []  # type: List[Optional[imdb_utils.IMDBInfo]]
-        else:
-            imdb_search_results = self.get_imdb_search_info(video_file)  # type: List[imdb_utils.IMDBInfo]
-            imdb_detail_results = [None] * len(imdb_search_results)  # type: List[Optional[imdb_utils.IMDBInfo]]
-
-            if imdb_search_results and (imdb_search_result := imdb_search_results[0]):
-                if imdb_detail_result := self.get_imdb_detail_info(imdb_search_result.imdb_tt):
-                    imdb_detail_results[0] = imdb_detail_result
+        imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, auto_search)
 
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
             while True:
-                display_lines, imdb_detail_row_offset = self.setup_display_lines(video_file, imdb_search_results, imdb_detail_results, auto_search)
+                display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results)
 
                 video_info_panel.set_rows(display_lines)
-
                 if auto_search and imdb_detail_results:
-                    video_info_panel.set_hilighted_row(imdb_detail_row_offset)
+                    video_info_panel.set_hilighted_row(imdb_detail_start_row)
                     auto_search = False
-
                 video_info_panel.show()
 
                 run_result = video_info_panel.run()
@@ -463,21 +226,11 @@ class MyMenu(curses_gui.MainMenu):
                     return None
 
                 elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
-                    imdb_search_results = self.get_imdb_search_info(video_file)
-                    imdb_detail_results = [None] * len(imdb_search_results)
-                    video_info_panel.set_hilighted_row(imdb_detail_row_offset)
+                    imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, True)
+                    video_info_panel.set_hilighted_row(imdb_detail_start_row)
 
-                elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 1:
-                    video_file.imdb_tt = ''
-                    video_file.imdb_rating = ''
-                    video_file.imdb_name = ''
-                    video_file.imdb_year = ''
-                    video_file.imdb_genres = []
-                    video_file.imdb_plot = ''
-                    self.video_files_is_dirty = True
-
-                elif run_result.key == curses_gui.Keycodes.RETURN and imdb_search_results and imdb_detail_row_offset <= run_result.row_index < len(imdb_search_results) + imdb_detail_row_offset:
-                    imdb_search_index = run_result.row_index - imdb_detail_row_offset
+                elif run_result.key == curses_gui.Keycodes.RETURN and imdb_detail_start_row <= run_result.row_index < imdb_detail_end_row:
+                    imdb_search_index = run_result.row_index - imdb_detail_start_row
                     imdb_search_result = imdb_search_results[imdb_search_index]
                     imdb_detail_result = imdb_detail_results[imdb_search_index]
 
