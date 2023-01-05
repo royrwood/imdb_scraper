@@ -35,6 +35,7 @@ def get_parse_imdb_search_results(video_name: str, year: int = 0) -> List[IMDBIn
 
     return parse_imdb_search_results(imdb_response_text)
 
+
 def get_imdb_search_results(video_name: str, year: int = 0) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',

@@ -129,8 +129,8 @@ class MyMenu(curses_gui.MainMenu):
                 if line.strip():
                     message_lines.append(line)
 
-        for l in message_lines:
-            logging.error(l)
+        for line in message_lines:
+            logging.error(line)
 
         with curses_gui.MessagePanel(message_lines) as message_panel:
             message_panel.run()

@@ -181,7 +181,7 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]]=None, select_grid_cells=False, inner_padding=False, show_immediately=True, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]] = None, select_grid_cells=False, inner_padding=False, show_immediately=True, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
@@ -443,7 +443,6 @@ class ScrollingPanel:
 
                 if x >= self.content_right:
                     break
-
 
         self.needs_render = False
 
@@ -983,6 +982,7 @@ class DialogBox:
 
             if single_key or result is not None:
                 return result
+
 
 def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedDialogResult:
     task_thread = SelectableThread(task)
