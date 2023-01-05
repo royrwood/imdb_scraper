@@ -282,7 +282,9 @@ class MyMenu(curses_gui.MainMenu):
                 continue
             else:
                 if not self.display_individual_video_file(video_file, True):
-                    break
+                    with curses_gui.DialogBox(prompt=[f'Continue processing?'], buttons_text=['Continue', 'Cancel']) as dialog_box:
+                        if dialog_box.run() != 'Continue':
+                            break
 
     def save_video_file_data(self):
         if not self.video_files:
