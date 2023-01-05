@@ -263,7 +263,7 @@ class MyMenu(curses_gui.MainMenu):
                     if video_file.imdb_tt:
                         display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.imdb_name, video_file.imdb_year, f'[{video_file.imdb_tt}]', video_file.file_path]))
                     else:
-                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), f'[{video_file.imdb_tt}]', video_file.file_path]))
+                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, video_file.scrubbed_file_year, f'[{video_file.imdb_tt}]', video_file.file_path]))
                 scrolling_panel.set_rows(display_rows)
                 scrolling_panel.show()
 

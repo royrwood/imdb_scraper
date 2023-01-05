@@ -11,7 +11,7 @@ import requests
 class VideoFile:
     file_path: str = ''
     scrubbed_file_name: str = ''
-    scrubbed_file_year: int = 0
+    scrubbed_file_year: str = ''
     imdb_tt: str = ''
     imdb_name: str = ''
     imdb_year: str = ''
@@ -30,13 +30,13 @@ class IMDBInfo:
     imdb_plot: str = ''
 
 
-def get_parse_imdb_search_results(video_name: str, year: int = 0) -> List[IMDBInfo]:
+def get_parse_imdb_search_results(video_name: str, year: str = None) -> List[IMDBInfo]:
     imdb_response_text = get_imdb_search_results(video_name, year)
 
     return parse_imdb_search_results(imdb_response_text)
 
 
-def get_imdb_search_results(video_name: str, year: int = 0) -> str:
+def get_imdb_search_results(video_name: str, year: str = None) -> str:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
@@ -128,13 +128,13 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year)
 
 
-def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, int):
-    year = 0
+def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, str):
+    year = ''
 
     match = re.match(r'((.*)\((\d{4})\))', file_name)
     if match:
         file_name = match.group(2)
-        year = int(match.group(3))
+        year = match.group(3)
         scrubbed_file_name_list = file_name.replace('.', ' ').split()
 
     else:
@@ -152,7 +152,7 @@ def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str
         if scrubbed_file_name_list:
             match = re.match(r'\(?(\d{4})\)?', scrubbed_file_name_list[-1])
             if match:
-                year = int(match.group(1))
+                year = match.group(1)
                 del scrubbed_file_name_list[-1]
 
     scrubbed_file_name = ' '.join(scrubbed_file_name_list).strip()
