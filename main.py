@@ -419,9 +419,11 @@ class MyMenu(curses_gui.MainMenu):
                 max_name_length = max(max_name_length, len(imdb_info.imdb_name))
                 max_tt_length = max(max_tt_length, len(imdb_info.imdb_tt))
 
+            max_name_length = min(max_name_length, 75)
+
             for i in range(len(imdb_search_results)):
                 imdb_info = imdb_detail_results[i] or imdb_search_results[i]
-                imdb_info_str = f'{imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
+                imdb_info_str = f'{imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
                 display_lines.append(imdb_info_str)
             display_lines.append(curses_gui.HorizontalLine())
 
@@ -530,11 +532,8 @@ class MyMenu(curses_gui.MainMenu):
             if video_file.imdb_tt:
                 continue
             else:
-                with curses_gui.DialogBox(prompt=[f'Search IMDB for "{video_file.scrubbed_file_name}"?'], buttons_text=['OK', 'Cancel']) as dialog_box:
-                    if dialog_box.run() != 'OK':
-                        break
-
-                self.display_individual_video_file(video_file, True)
+                if not self.display_individual_video_file(video_file, True):
+                    break
 
     def save_video_file_data(self):
         if not self.video_files:

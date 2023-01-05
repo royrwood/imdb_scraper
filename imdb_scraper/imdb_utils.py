@@ -96,6 +96,10 @@ def parse_imdb_search_results(imdb_response_text: str) -> List[IMDBInfo]:
         imdb_tt_url = search_result_selector.xpath(".//div/div/a/@href").get() or ''
         imdb_tt = re.match(r'/title/(tt\d+).*', imdb_tt_url).group(1) or ''
 
+        imdb_year = imdb_year[:4]
+        if not imdb_year.isdigit():
+            imdb_year = ''
+
         match_video_file = IMDBInfo(imdb_tt=imdb_tt, imdb_name=imdb_title, imdb_year=imdb_year)
         match_video_files.append(match_video_file)
 
@@ -109,6 +113,13 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     imdb_genres = imdb_response_selector.xpath("//div[@data-testid='genres']/div/a/span/text()").getall()
     imdb_plot = imdb_response_selector.xpath("//span[@data-testid='plot-xl']/text()").get() or ''
     imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li//a/text()").get() or ''
+
+    if not re.search(r'\d\.\d', imdb_rating):
+        imdb_rating = ''
+
+    imdb_year = imdb_year[:4]
+    if not imdb_year.isdigit():
+        imdb_year = ''
 
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[1]/a/text()").get()
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[2]/a/text()").get()
