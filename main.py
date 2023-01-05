@@ -163,8 +163,11 @@ class MyMenu(curses_gui.MainMenu):
         return threaded_dialog_result.selectable_thread.callable_result
 
     @staticmethod
-    def setup_individual_video_file_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo]) -> Tuple[List[str], int, int]:
-        display_lines = ['Search IMDB', curses_gui.HorizontalLine()]
+    def setup_individual_video_file_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], additional_commands: List[str] = None) -> Tuple[List[str], int, int]:
+        display_lines = ['Search IMDB']
+        if additional_commands:
+            display_lines.extend(additional_commands)
+        display_lines.append(curses_gui.HorizontalLine())
         imdb_detail_start_row = len(display_lines)
         imdb_detail_end_row = imdb_detail_start_row + len(imdb_search_results)
 
@@ -204,12 +207,12 @@ class MyMenu(curses_gui.MainMenu):
 
         return imdb_search_results, imdb_detail_results
 
-    def display_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search=False):
+    def edit_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None):
         imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, auto_search)
 
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
             while True:
-                display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results)
+                display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results, additional_commands)
 
                 video_info_panel.set_rows(display_lines)
                 if auto_search and imdb_detail_results:
@@ -221,11 +224,17 @@ class MyMenu(curses_gui.MainMenu):
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     return None
 
-                elif run_result.key == curses_gui.Keycodes.RETURN and run_result.row_index == 0:
+                if run_result.key != curses_gui.Keycodes.RETURN:
+                    continue
+
+                elif run_result.row_index == 0:
                     imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, True)
                     video_info_panel.set_hilighted_row(imdb_detail_start_row)
 
-                elif run_result.key == curses_gui.Keycodes.RETURN and imdb_detail_start_row <= run_result.row_index < imdb_detail_end_row:
+                elif additional_commands and 1 <= run_result.row_index < 1 + len(additional_commands):
+                    return additional_commands[run_result.row_index - 1]
+
+                elif imdb_detail_start_row <= run_result.row_index < imdb_detail_end_row:
                     imdb_search_index = run_result.row_index - imdb_detail_start_row
                     imdb_search_result = imdb_search_results[imdb_search_index]
                     imdb_detail_result = imdb_detail_results[imdb_search_index]
@@ -249,6 +258,7 @@ class MyMenu(curses_gui.MainMenu):
         header_columns = [curses_gui.Column('', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('YEAR', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
+                          curses_gui.Column('RATING', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('IMDB-TT', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('FILE PATH', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           ]
@@ -261,9 +271,9 @@ class MyMenu(curses_gui.MainMenu):
                 display_rows = []
                 for i, video_file in enumerate(self.video_files):
                     if video_file.imdb_tt:
-                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.imdb_name, video_file.imdb_year, f'[{video_file.imdb_tt}]', video_file.file_path]))
+                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.imdb_name, video_file.imdb_year, f'{video_file.imdb_rating}', f'[{video_file.imdb_tt}]', video_file.file_path]))
                     else:
-                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), f'[{video_file.imdb_tt}]', video_file.file_path]))
+                        display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, str(video_file.scrubbed_file_year), f'{video_file.imdb_rating}', f'[{video_file.imdb_tt}]', video_file.file_path]))
                 scrolling_panel.set_rows(display_rows)
                 scrolling_panel.show()
 
@@ -274,14 +284,25 @@ class MyMenu(curses_gui.MainMenu):
                     scrolling_panel.hide()
 
                     selected_video_file = self.video_files[run_result.row_index]
-                    self.display_individual_video_file(selected_video_file)
+                    self.edit_individual_video_file(selected_video_file)
 
     def update_all_video_file_data(self):
+        num_video_files = len(self.video_files)
+
         for i, video_file in enumerate(self.video_files):
             if video_file.imdb_tt:
                 continue
             else:
-                if not self.display_individual_video_file(video_file, True):
+                additional_commands = []
+                if i < num_video_files - 1:
+                    for j in range(i + 1, num_video_files):
+                        if not self.video_files[j].imdb_tt:
+                            additional_commands.append(f'Skip to "{self.video_files[i + 1].scrubbed_file_name}"')
+                            break
+                additional_commands.append('Stop Updating')
+
+                result = self.edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands)
+                if result in [None, 'Stop Updating']:
                     break
 
     def save_video_file_data(self):
