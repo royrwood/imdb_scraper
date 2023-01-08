@@ -185,7 +185,7 @@ class MyMenu(curses_gui.MainMenu):
         return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
     @staticmethod
-    def setup_video_file_edit_body(imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int]) -> List:
+    def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int]) -> List:
         display_lines = []
 
         if imdb_search_results:
@@ -209,6 +209,10 @@ class MyMenu(curses_gui.MainMenu):
 
         if imdb_selected_detail_index is not None and imdb_detail_results[imdb_selected_detail_index]:
             json_str = json.dumps(dataclasses.asdict(imdb_detail_results[imdb_selected_detail_index]), indent=4, sort_keys=True)
+            json_str_lines = json_str.splitlines()
+            display_lines.extend(json_str_lines)
+        else:
+            json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
             json_str_lines = json_str.splitlines()
             display_lines.extend(json_str_lines)
 
@@ -241,7 +245,7 @@ class MyMenu(curses_gui.MainMenu):
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_panel:
             while True:
                 display_lines_header, imdb_detail_start_row, imdb_detail_end_row = MyMenu.setup_video_file_edit_header(video_file, imdb_search_results, additional_commands)
-                display_lines_body = MyMenu.setup_video_file_edit_body(imdb_search_results, imdb_detail_results, imdb_selected_detail_index)
+                display_lines_body = MyMenu.setup_video_file_edit_body(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index)
                 display_lines = display_lines_header + display_lines_body
 
                 video_panel.set_rows(display_lines)
