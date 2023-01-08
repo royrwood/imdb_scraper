@@ -223,7 +223,7 @@ class MyMenu(curses_gui.MainMenu):
 
         if auto_search and imdb_detail_results:
             imdb_selected_detail_index = 0
-            video_info_panel_hilited_row = 1 + len(additional_commands) + 1
+            video_info_panel_hilited_row = 1 + len(additional_commands) + 1  # Presumes knowledge of how setup_individual_video_file_display_lines() sets up initial rows
         else:
             imdb_selected_detail_index = None
             video_info_panel_hilited_row = 0
@@ -233,14 +233,13 @@ class MyMenu(curses_gui.MainMenu):
                 display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index, additional_commands)
 
                 video_info_panel.set_rows(display_lines, video_info_panel_hilited_row)
+                video_info_panel_hilited_row = None
                 video_info_panel.show()
 
                 run_result = video_info_panel.run()
 
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     raise UserCancelException()
-
-                video_info_panel_hilited_row = run_result.row_index
 
                 if run_result.row_index == 0:
                     try:
