@@ -171,7 +171,7 @@ class MyMenu(curses_gui.MainMenu):
         return threaded_dialog_result.selectable_thread.callable_result
 
     @staticmethod
-    def setup_individual_video_file_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], additional_commands: List[str] = None) -> Tuple[List[str], int, int]:
+    def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], additional_commands: List[str] = None) -> Tuple[List, int, int]:
         if video_file.scrubbed_file_year:
             display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"']
         else:
@@ -181,6 +181,12 @@ class MyMenu(curses_gui.MainMenu):
         display_lines.append(curses_gui.HorizontalLine())
         imdb_detail_start_row = len(display_lines)
         imdb_detail_end_row = imdb_detail_start_row + len(imdb_search_results)
+
+        return display_lines, imdb_detail_start_row, imdb_detail_end_row
+
+    @staticmethod
+    def setup_video_file_edit_body(imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int]) -> List:
+        display_lines = []
 
         if imdb_search_results:
             max_name_length = 0
@@ -194,7 +200,10 @@ class MyMenu(curses_gui.MainMenu):
 
             for i in range(len(imdb_search_results)):
                 imdb_info = imdb_detail_results[i] or imdb_search_results[i]
-                imdb_info_str = f'{imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
+                if i == imdb_selected_detail_index:
+                    imdb_info_str = f'-> {imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
+                else:
+                    imdb_info_str = f'   {imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
                 display_lines.append(imdb_info_str)
             display_lines.append(curses_gui.HorizontalLine())
 
@@ -203,7 +212,7 @@ class MyMenu(curses_gui.MainMenu):
             json_str_lines = json_str.splitlines()
             display_lines.extend(json_str_lines)
 
-        return display_lines, imdb_detail_start_row, imdb_detail_end_row
+        return display_lines
 
     def setup_search_results_detail_results(self, video_file: imdb_utils.VideoFile, auto_search: bool) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
         if not auto_search:
@@ -222,21 +231,26 @@ class MyMenu(curses_gui.MainMenu):
         imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, auto_search)
 
         if auto_search and imdb_detail_results:
+            display_lines_header, imdb_detail_start_row, imdb_detail_end_row = MyMenu.setup_video_file_edit_header(video_file, imdb_search_results, additional_commands)
             imdb_selected_detail_index = 0
-            video_info_panel_hilited_row = 1 + len(additional_commands) + 1  # Presumes knowledge of how setup_individual_video_file_display_lines() sets up initial rows
+            forced_video_panel_hilited_row = imdb_detail_start_row
         else:
             imdb_selected_detail_index = None
-            video_info_panel_hilited_row = 0
+            forced_video_panel_hilited_row = None
 
-        with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
+        with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_panel:
             while True:
-                display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index, additional_commands)
+                display_lines_header, imdb_detail_start_row, imdb_detail_end_row = MyMenu.setup_video_file_edit_header(video_file, imdb_search_results, additional_commands)
+                display_lines_body = MyMenu.setup_video_file_edit_body(imdb_search_results, imdb_detail_results, imdb_selected_detail_index)
+                display_lines = display_lines_header + display_lines_body
 
-                video_info_panel.set_rows(display_lines, video_info_panel_hilited_row)
-                video_info_panel_hilited_row = None
-                video_info_panel.show()
+                video_panel.set_rows(display_lines)
+                if forced_video_panel_hilited_row:
+                    video_panel.set_hilighted_row(forced_video_panel_hilited_row)
+                    forced_video_panel_hilited_row = None
+                video_panel.show()
 
-                run_result = video_info_panel.run()
+                run_result = video_panel.run()
 
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     raise UserCancelException()
@@ -247,7 +261,8 @@ class MyMenu(curses_gui.MainMenu):
                     except UserCancelException:
                         logging.info('User cancelled IMDB search/detail fetch')
                     else:
-                        video_info_panel_hilited_row = imdb_detail_start_row
+                        forced_video_panel_hilited_row = imdb_detail_start_row
+                        imdb_selected_detail_index = 0
 
                 elif additional_commands and 1 <= run_result.row_index < 1 + len(additional_commands):
                     return additional_commands[run_result.row_index - 1]

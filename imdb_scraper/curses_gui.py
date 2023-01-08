@@ -245,7 +245,7 @@ class ScrollingPanel:
             self.header_row = None
             self.num_header_rows = 0
 
-    def set_rows(self, new_rows, hilited_row=None):
+    def set_rows(self, new_rows):
         rows = []
 
         self.column_widths = list()
@@ -280,9 +280,6 @@ class ScrollingPanel:
             self.rows_max_width = sum(self.column_widths)
         self.needs_render = True
         self.top_visible_row_index = 0
-
-        if hilited_row:
-            self.hilighted_row_index = hilited_row
 
         if self.hilighted_row_index >= self.num_rows:
             self.hilighted_row_index = max(self.num_rows - 1, 0)
