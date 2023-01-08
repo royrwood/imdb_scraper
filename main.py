@@ -314,7 +314,10 @@ class MyMenu(curses_gui.MainMenu):
                         display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.imdb_name, video_file.imdb_year, f'{video_file.imdb_rating}', f'[{video_file.imdb_tt}]', video_file.file_path]))
                     else:
                         display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, video_file.scrubbed_file_year, '', '', video_file.file_path]))
+                hilighted_row_index = scrolling_panel.hilighted_row_index
+                top_visible_row_index = scrolling_panel.top_visible_row_index
                 scrolling_panel.set_rows(display_rows)
+                scrolling_panel.set_hilighted_row(hilighted_row_index, top_visible_row_index)
                 scrolling_panel.show()
 
                 run_result = scrolling_panel.run()

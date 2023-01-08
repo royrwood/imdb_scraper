@@ -289,11 +289,17 @@ class ScrollingPanel:
         # Since the row contents have changed, we need to recalculate the window geometry
         self.set_geometry()
 
-    def set_hilighted_row(self, new_hilighted_row):
+    def set_hilighted_row(self, new_hilighted_row, top_visible_row_index=None):
         if self.hilighted_row_index != new_hilighted_row:
             self.needs_render = True
 
         self.hilighted_row_index = new_hilighted_row
+
+        if top_visible_row_index:
+            if self.top_visible_row_index != top_visible_row_index:
+                self.needs_render = True
+
+            self.top_visible_row_index = top_visible_row_index
 
     def set_geometry(self):
         orig_window_height = self.height
