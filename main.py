@@ -171,8 +171,11 @@ class MyMenu(curses_gui.MainMenu):
         return threaded_dialog_result.selectable_thread.callable_result
 
     @staticmethod
-    def setup_individual_video_file_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], additional_commands: List[str] = None) -> Tuple[List[str], int, int]:
-        display_lines = ['Search IMDB']
+    def setup_individual_video_file_display_lines(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], additional_commands: List[str] = None) -> Tuple[List[str], int, int]:
+        if video_file.scrubbed_file_year:
+            display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"']
+        else:
+            display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name}"']
         if additional_commands:
             display_lines.extend(additional_commands)
         display_lines.append(curses_gui.HorizontalLine())
@@ -195,10 +198,10 @@ class MyMenu(curses_gui.MainMenu):
                 display_lines.append(imdb_info_str)
             display_lines.append(curses_gui.HorizontalLine())
 
-        json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
-        json_str_lines = json_str.splitlines()
-
-        display_lines.extend(json_str_lines)
+        if imdb_selected_detail_index is not None and imdb_detail_results[imdb_selected_detail_index]:
+            json_str = json.dumps(dataclasses.asdict(imdb_detail_results[imdb_selected_detail_index]), indent=4, sort_keys=True)
+            json_str_lines = json_str.splitlines()
+            display_lines.extend(json_str_lines)
 
         return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
@@ -218,49 +221,40 @@ class MyMenu(curses_gui.MainMenu):
     def edit_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None):
         imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, auto_search)
 
+        if auto_search and imdb_detail_results:
+            imdb_selected_detail_index = 0
+            video_info_panel_hilited_row = 1 + len(additional_commands) + 1
+        else:
+            imdb_selected_detail_index = None
+            video_info_panel_hilited_row = 0
+
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_info_panel:
             while True:
-                display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results, additional_commands)
+                display_lines, imdb_detail_start_row, imdb_detail_end_row = self.setup_individual_video_file_display_lines(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index, additional_commands)
 
-                video_info_panel.set_rows(display_lines)
-                if auto_search and imdb_detail_results:
-                    video_info_panel.set_hilighted_row(imdb_detail_start_row)
-                    auto_search = False
+                video_info_panel.set_rows(display_lines, video_info_panel_hilited_row)
                 video_info_panel.show()
 
                 run_result = video_info_panel.run()
+
                 if run_result.key == curses_gui.Keycodes.ESCAPE:
                     raise UserCancelException()
 
-                if run_result.key != curses_gui.Keycodes.RETURN:
-                    continue
+                video_info_panel_hilited_row = run_result.row_index
 
-                elif run_result.row_index == 0:
+                if run_result.row_index == 0:
                     try:
                         imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, True)
                     except UserCancelException:
                         logging.info('User cancelled IMDB search/detail fetch')
                     else:
-                        video_info_panel.set_hilighted_row(imdb_detail_start_row)
+                        video_info_panel_hilited_row = imdb_detail_start_row
 
                 elif additional_commands and 1 <= run_result.row_index < 1 + len(additional_commands):
                     return additional_commands[run_result.row_index - 1]
 
                 elif imdb_detail_start_row <= run_result.row_index < imdb_detail_end_row:
-                    imdb_search_index = run_result.row_index - imdb_detail_start_row
-                    imdb_search_result = imdb_search_results[imdb_search_index]
-                    imdb_detail_result = imdb_detail_results[imdb_search_index]
-
-                    if imdb_detail_result is None:
-                        try:
-                            if imdb_detail_result := self.get_imdb_detail_info(imdb_search_result.imdb_tt):
-                                imdb_detail_results[imdb_search_index] = imdb_detail_result
-                        except UserCancelException:
-                            logging.info('User cancelled IMDB search/detail fetch')
-                        finally:
-                            continue
-
-                    if imdb_detail_result:
+                    if (imdb_selected_detail_index == run_result.row_index - imdb_detail_start_row) and (imdb_detail_result := imdb_detail_results[imdb_selected_detail_index]):
                         video_file.imdb_tt = imdb_detail_result.imdb_tt
                         video_file.imdb_rating = imdb_detail_result.imdb_rating
                         video_file.imdb_name = imdb_detail_result.imdb_name
@@ -268,8 +262,19 @@ class MyMenu(curses_gui.MainMenu):
                         video_file.imdb_genres = imdb_detail_result.imdb_genres
                         video_file.imdb_plot = imdb_detail_result.imdb_plot
                         self.video_files_is_dirty = True
-
                         return video_file
+
+                    imdb_selected_detail_index = run_result.row_index - imdb_detail_start_row
+
+                    if imdb_detail_results[imdb_selected_detail_index] is None:
+                        try:
+                            imdb_search_result = imdb_search_results[imdb_selected_detail_index]
+                            if imdb_detail_result := self.get_imdb_detail_info(imdb_search_result.imdb_tt):
+                                imdb_detail_results[imdb_selected_detail_index] = imdb_detail_result
+                        except UserCancelException:
+                            logging.info('User cancelled IMDB search/detail fetch')
+                        finally:
+                            continue
 
     def display_all_video_file_data(self):
         header_columns = [curses_gui.Column('', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
