@@ -18,6 +18,7 @@ class VideoFile:
     imdb_rating: str = ''
     imdb_genres: List[str] = None
     imdb_plot: str = None
+    is_dirty: bool = False
 
 
 @dataclasses.dataclass
