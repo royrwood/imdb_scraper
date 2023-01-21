@@ -234,6 +234,8 @@ class ScrollingPanel:
     def __exit__(self, _type, _value, _traceback):
         self.hide()
 
+    def get_width_height(self):
+        return self.width, self.height
     def set_header(self, header_row):
         if type(header_row) is Row:
             self.header_row = copy.deepcopy(header_row)

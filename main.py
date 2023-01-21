@@ -6,6 +6,7 @@ import functools
 import logging
 import json
 import math
+import textwrap
 import traceback
 from typing import List, Optional, Tuple
 
@@ -185,7 +186,7 @@ class MyMenu(curses_gui.MainMenu):
         return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
     @staticmethod
-    def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int]) -> List:
+    def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], panel_width: int) -> List:
         display_lines = []
 
         if imdb_search_results:
@@ -208,9 +209,24 @@ class MyMenu(curses_gui.MainMenu):
             display_lines.append(curses_gui.HorizontalLine())
 
         if imdb_selected_detail_index is not None and imdb_detail_results and imdb_detail_results[imdb_selected_detail_index]:
-            json_str = json.dumps(dataclasses.asdict(imdb_detail_results[imdb_selected_detail_index]), indent=4, sort_keys=True)
-            json_str_lines = json_str.splitlines()
-            display_lines.extend(json_str_lines)
+            imdb_info = imdb_detail_results[imdb_selected_detail_index]
+
+            imdb_detail_lines = list()
+            imdb_detail_lines.append(f'imdb_tt:     {imdb_info.imdb_name}')
+            imdb_detail_lines.append(f'imdb_rating: {imdb_info.imdb_rating}')
+            imdb_detail_lines.append(f'imdb_year:   {imdb_info.imdb_year}')
+            imdb_detail_lines.append(f'imdb_tt:     {imdb_info.imdb_tt}')
+            imdb_detail_lines.append(f'imdb_genres: {imdb_info.imdb_genres}')
+
+            wrap_width = min(panel_width - 20, 100)
+            plot_lines = textwrap.wrap(imdb_info.imdb_plot, width=wrap_width)
+            imdb_detail_lines.append(f'')
+            imdb_detail_lines.append(f'imdb_plot:   {plot_lines[0]}')
+            for plot_line in plot_lines[1:]:
+                imdb_detail_lines.append(f'             {plot_line}')
+
+            display_lines.extend(imdb_detail_lines)
+
         else:
             json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
             json_str_lines = json_str.splitlines()
@@ -248,8 +264,10 @@ class MyMenu(curses_gui.MainMenu):
 
         with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_panel:
             while True:
+                panel_width, panel_height = video_panel.get_width_height()
+
                 display_lines_header, imdb_detail_start_row, imdb_detail_end_row = MyMenu.setup_video_file_edit_header(video_file, imdb_search_results, additional_commands)
-                display_lines_body = MyMenu.setup_video_file_edit_body(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index)
+                display_lines_body = MyMenu.setup_video_file_edit_body(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index, panel_width)
                 display_lines = display_lines_header + display_lines_body
 
                 video_panel.set_rows(display_lines)
