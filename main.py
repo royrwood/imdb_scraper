@@ -145,9 +145,12 @@ class MyMenu(curses_gui.MainMenu):
             message_panel.run()
             return
 
-    def get_imdb_detail_info(self, imdb_tt: str) -> Optional[imdb_utils.IMDBInfo]:
-        imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt)
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, 'Fetching IMDB Detail Info...')
+    def get_imdb_detail_info(self, imdb_info: imdb_utils.IMDBInfo, dialog_msg=None) -> Optional[imdb_utils.IMDBInfo]:
+        if dialog_msg is None:
+            dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"...'
+
+        imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_info.imdb_tt)
+        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)
         if threaded_dialog_result.dialog_result is not None:
             raise UserCancelException()
 
@@ -158,9 +161,12 @@ class MyMenu(curses_gui.MainMenu):
 
         return threaded_dialog_result.selectable_thread.callable_result
 
-    def get_imdb_search_info(self, file_name, file_year) -> List[imdb_utils.IMDBInfo]:
+    def get_imdb_search_info(self, file_name, file_year, dialog_msg: str = None) -> List[imdb_utils.IMDBInfo]:
+        if dialog_msg is None:
+            dialog_msg = f'Fetching IMDB Search Info for "{file_name}"...'
+
         imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, f'Fetching IMDB Search Info for "{file_name}"...')
+        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)
         if threaded_dialog_result.dialog_result is not None:
             raise UserCancelException()
 
@@ -234,19 +240,19 @@ class MyMenu(curses_gui.MainMenu):
 
         return display_lines
 
-    def setup_search_results_detail_results(self, video_file: imdb_utils.VideoFile) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
-        imdb_search_results = self.get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
+    def setup_search_results_detail_results(self, video_file: imdb_utils.VideoFile, search_dialog_msg: str = None, detail_dialog_msg: str = None) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
+        imdb_search_results = self.get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, search_dialog_msg)
         imdb_detail_results = [None] * len(imdb_search_results)
 
-        if imdb_search_results and (imdb_search_result := imdb_search_results[0]):
-            if imdb_detail_result := self.get_imdb_detail_info(imdb_search_result.imdb_tt):
+        if imdb_search_results and (imdb_info := imdb_search_results[0]):
+            if imdb_detail_result := self.get_imdb_detail_info(imdb_info, detail_dialog_msg):
                 imdb_detail_results[0] = imdb_detail_result
 
         return imdb_search_results, imdb_detail_results
 
-    def edit_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None):
+    def edit_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None, search_dialog_msg: str = None, detail_dialog_msg: str = None):
         if auto_search:
-            imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file)
+            imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, search_dialog_msg=search_dialog_msg, detail_dialog_msg=detail_dialog_msg)
         else:
             imdb_search_results = []
             imdb_detail_results = []
@@ -284,7 +290,7 @@ class MyMenu(curses_gui.MainMenu):
 
                 if run_result.row_index == 0:
                     try:
-                        imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file)
+                        imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, search_dialog_msg=search_dialog_msg, detail_dialog_msg=detail_dialog_msg)
                         if not imdb_search_results:
                             with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
                                 dialog_box.run()
@@ -312,8 +318,8 @@ class MyMenu(curses_gui.MainMenu):
 
                     if imdb_detail_results[imdb_selected_detail_index] is None:
                         try:
-                            imdb_search_result = imdb_search_results[imdb_selected_detail_index]
-                            if imdb_detail_result := self.get_imdb_detail_info(imdb_search_result.imdb_tt):
+                            imdb_info = imdb_search_results[imdb_selected_detail_index]
+                            if imdb_detail_result := self.get_imdb_detail_info(imdb_info):
                                 imdb_detail_results[imdb_selected_detail_index] = imdb_detail_result
                         except UserCancelException:
                             logging.info('User cancelled IMDB search/detail fetch')
@@ -380,7 +386,9 @@ class MyMenu(curses_gui.MainMenu):
             additional_commands.append('Stop Updating')
 
             try:
-                result = self.edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands)
+                search_dialog_msg = f'Fetching IMDB Search Info for "{video_file.scrubbed_file_name}" [{i}/{num_video_files}]...'
+                detail_dialog_msg = f'Fetching IMDB Detail Info for "{video_file.scrubbed_file_name}" [{i}/{num_video_files}]...'
+                result = self.edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands, search_dialog_msg=search_dialog_msg, detail_dialog_msg=detail_dialog_msg)
                 if result == 'Stop Updating':
                     break
                 num_video_files_processed += 1
