@@ -307,7 +307,13 @@ class MyMenu(curses_gui.MainMenu):
                         logging.info('User cancelled video file edit')
 
     def update_all_video_file_data(self):
+        if not self.video_files:
+            with curses_gui.DialogBox(prompt=['No video files to process'], buttons_text=['OK']) as dialog_box:
+                dialog_box.run()
+            return
+
         num_video_files = len(self.video_files)
+        num_video_files_processed = 0
 
         for i, video_file in enumerate(self.video_files):
             if video_file.imdb_tt:
@@ -317,7 +323,7 @@ class MyMenu(curses_gui.MainMenu):
             if i < num_video_files - 1:
                 for j in range(i + 1, num_video_files):
                     if not self.video_files[j].imdb_tt:
-                        additional_commands.append(f'Skip to "{self.video_files[j].scrubbed_file_name}"')
+                        additional_commands.append(f'Skip to next video file ("{self.video_files[j].scrubbed_file_name}")')
                         break
             additional_commands.append('Stop Updating')
 
@@ -325,6 +331,7 @@ class MyMenu(curses_gui.MainMenu):
                 result = self.edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands)
                 if result == 'Stop Updating':
                     break
+                num_video_files_processed += 1
             except UserCancelException:
                 logging.info('User cancelled video file edit')
 
@@ -332,26 +339,30 @@ class MyMenu(curses_gui.MainMenu):
                     if dialog_box.run() == 'Cancel':
                         break
 
+        with curses_gui.DialogBox(prompt=[f'Processed {num_video_files_processed} video files']) as dialog_box:
+            dialog_box.run()
+
     def save_video_file_data(self):
         if not self.video_files:
-            final_message = 'No video info to save'
+            with curses_gui.DialogBox(prompt=['No video info to save']) as dialog_box:
+                dialog_box.run()
+            return
 
-        else:
-            final_message = 'Video data not saved'
+        final_message = 'Video data not saved'
 
-            with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value=self.video_file_path) as input_panel:
-                video_file_path = input_panel.run()
-            input_panel.hide()
+        with curses_gui.InputPanel(prompt='Enter path to video file data: ', default_value=self.video_file_path) as input_panel:
+            video_file_path = input_panel.run()
+        input_panel.hide()
 
-            if video_file_path:
-                with open(video_file_path, 'w') as f:
-                    json_list = [dataclasses.asdict(video_file) for video_file in self.video_files]
-                    json_str = json.dumps(json_list, indent=4)
-                    f.write(json_str)
-                final_message = f'Video saved to "{video_file_path}"'
-                self.video_files_is_dirty = False
+        if video_file_path:
+            with open(video_file_path, 'w') as f:
+                json_list = [dataclasses.asdict(video_file) for video_file in self.video_files]
+                json_str = json.dumps(json_list, indent=4)
+                f.write(json_str)
+            final_message = f'Video saved to "{video_file_path}"'
+            self.video_files_is_dirty = False
 
-        with curses_gui.DialogBox(prompt=[final_message], buttons_text=['OK']) as dialog_box:
+        with curses_gui.DialogBox(prompt=[final_message]) as dialog_box:
             dialog_box.run()
 
     def load_video_file_data(self):
@@ -372,7 +383,8 @@ class MyMenu(curses_gui.MainMenu):
             video_file = imdb_utils.VideoFile(**video_file_dict)
             self.video_files.append(video_file)
 
-        with curses_gui.DialogBox(prompt=[f'Loaded video file date from "{self.video_file_path}"'], buttons_text=['OK']) as dialog_box:
+        num_video_files = len(self.video_files)
+        with curses_gui.DialogBox(prompt=[f'Loaded {num_video_files} video files from "{self.video_file_path}"'], buttons_text=['OK']) as dialog_box:
             dialog_box.run()
 
     def scan_video_folder(self):

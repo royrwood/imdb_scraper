@@ -839,7 +839,10 @@ class InputPanel:
 
 
 class DialogBox:
-    def __init__(self, prompt: Union[Row, List[Row], List[str], str], buttons_text: List[str], show_immediately: bool = False):
+    def __init__(self, prompt: Union[Row, List[Row], List[str], str], buttons_text: List[str] = None, show_immediately: bool = False):
+        if buttons_text is None:
+            buttons_text = ['OK']
+
         self.window = None
         self.panel = None
         self.needs_render = True
