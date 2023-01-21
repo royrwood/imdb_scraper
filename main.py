@@ -234,10 +234,7 @@ class MyMenu(curses_gui.MainMenu):
 
         return display_lines
 
-    def setup_search_results_detail_results(self, video_file: imdb_utils.VideoFile, auto_search: bool) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
-        if not auto_search:
-            return [], []
-
+    def setup_search_results_detail_results(self, video_file: imdb_utils.VideoFile) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
         imdb_search_results = self.get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
         imdb_detail_results = [None] * len(imdb_search_results)
 
@@ -248,7 +245,11 @@ class MyMenu(curses_gui.MainMenu):
         return imdb_search_results, imdb_detail_results
 
     def edit_individual_video_file(self, video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None):
-        imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, auto_search)
+        if auto_search:
+            imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file)
+        else:
+            imdb_search_results = []
+            imdb_detail_results = []
 
         if auto_search and not imdb_search_results:
             with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
@@ -283,7 +284,7 @@ class MyMenu(curses_gui.MainMenu):
 
                 if run_result.row_index == 0:
                     try:
-                        imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file, True)
+                        imdb_search_results, imdb_detail_results = self.setup_search_results_detail_results(video_file)
                         if not imdb_search_results:
                             with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
                                 dialog_box.run()
@@ -374,7 +375,7 @@ class MyMenu(curses_gui.MainMenu):
             if i < num_video_files - 1:
                 for j in range(i + 1, num_video_files):
                     if not self.video_files[j].imdb_tt:
-                        additional_commands.append(f'Skip to next video file ("{self.video_files[j].scrubbed_file_name}")')
+                        additional_commands.append(f'Skip to next video file ("{self.video_files[j].scrubbed_file_name}" [{j}/{num_video_files}])')
                         break
             additional_commands.append('Stop Updating')
 
