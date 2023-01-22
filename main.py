@@ -38,6 +38,7 @@ def show_exception_details(exc_type, exc_value, exc_traceback):
         message_panel.run()
         return
 
+
 def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg=None) -> Optional[imdb_utils.IMDBInfo]:
     if dialog_msg is None:
         dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"...'
@@ -53,6 +54,7 @@ def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg=None) -> Opt
         raise AsyncThreadException()
 
     return threaded_dialog_result.selectable_thread.callable_result
+
 
 def get_imdb_search_info(file_name, file_year, dialog_msg: str = None) -> List[imdb_utils.IMDBInfo]:
     if dialog_msg is None:
@@ -70,6 +72,7 @@ def get_imdb_search_info(file_name, file_year, dialog_msg: str = None) -> List[i
 
     return threaded_dialog_result.selectable_thread.callable_result
 
+
 def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], additional_commands: List[str] = None) -> Tuple[List, int, int]:
     if video_file.scrubbed_file_year:
         display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"']
@@ -83,6 +86,7 @@ def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_r
 
     return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
+
 def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, search_dialog_msg: str = None, detail_dialog_msg: str = None) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
     imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, search_dialog_msg)
     imdb_detail_results = [None] * len(imdb_search_results)
@@ -92,6 +96,7 @@ def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, search
             imdb_detail_results[0] = imdb_detail_result
 
     return imdb_search_results, imdb_detail_results
+
 
 def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], panel_width: int) -> List:
     display_lines = []
@@ -217,6 +222,7 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                         logging.info('User cancelled IMDB search/detail fetch')
                     finally:
                         continue
+
 
 class MyMenu(curses_gui.MainMenu):
     def __init__(self):
