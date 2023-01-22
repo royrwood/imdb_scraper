@@ -87,7 +87,7 @@ def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_r
     return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
 
-def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, , dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
+def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
     imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix)
     imdb_detail_results = [None] * len(imdb_search_results)
 
