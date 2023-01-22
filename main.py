@@ -72,6 +72,7 @@ def get_imdb_search_info(file_name, file_year, dialog_msg_suffix: str = '') -> L
 
     return threaded_dialog_result.selectable_thread.callable_result
 
+
 def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], additional_commands: List[str] = None) -> Tuple[List, int, int]:
     if video_file.scrubbed_file_year:
         display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"']
@@ -85,7 +86,8 @@ def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_r
 
     return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
-def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
+
+def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, , dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
     imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix)
     imdb_detail_results = [None] * len(imdb_search_results)
 
@@ -94,6 +96,7 @@ def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, dialog
             imdb_detail_results[0] = imdb_detail_result
 
     return imdb_search_results, imdb_detail_results
+
 
 def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], panel_width: int) -> List:
     display_lines = []
@@ -220,11 +223,12 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                     finally:
                         continue
 
+
 class MyMenu(curses_gui.MainMenu):
     def __init__(self):
         super(MyMenu, self).__init__()
         self.video_file_path: str = 'imdb_video_info.json'
-        self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = []
+        self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = None
         self.video_files_is_dirty: bool = False
         self.logger = logging.getLogger()
 
@@ -325,7 +329,6 @@ class MyMenu(curses_gui.MainMenu):
     #     header_row = curses_gui.Row(header_columns)
     #     with curses_gui.ScrollingPanel(rows=display_lines, inner_padding=True, header_row=header_row) as scrolling_panel:
     #         scrolling_panel.run()
-
 
     def display_all_video_file_data(self):
         if not self.video_files:
