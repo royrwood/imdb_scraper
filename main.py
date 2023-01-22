@@ -38,10 +38,11 @@ def show_exception_details(exc_type, exc_value, exc_traceback):
         message_panel.run()
         return
 
-def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg=None) -> Optional[imdb_utils.IMDBInfo]:
-    if dialog_msg is None:
-        dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"...'
-
+def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg_suffix: str = '') -> Optional[imdb_utils.IMDBInfo]:
+    if dialog_msg_suffix:
+        dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}" {dialog_msg_suffix}...'
+    else:
+        dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"{dialog_msg_suffix}...'
     imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_info.imdb_tt)
     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)
     if threaded_dialog_result.dialog_result is not None:
@@ -54,10 +55,11 @@ def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg=None) -> Opt
 
     return threaded_dialog_result.selectable_thread.callable_result
 
-def get_imdb_search_info(file_name, file_year, dialog_msg: str = None) -> List[imdb_utils.IMDBInfo]:
-    if dialog_msg is None:
+def get_imdb_search_info(file_name, file_year, dialog_msg_suffix: str = '') -> List[imdb_utils.IMDBInfo]:
+    if dialog_msg_suffix:
+        dialog_msg = f'Fetching IMDB Search Info for "{file_name}" {dialog_msg_suffix}...'
+    else:
         dialog_msg = f'Fetching IMDB Search Info for "{file_name}"...'
-
     imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)
     if threaded_dialog_result.dialog_result is not None:
@@ -83,12 +85,12 @@ def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_r
 
     return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
-def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, search_dialog_msg: str = None, detail_dialog_msg: str = None) -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
-    imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, search_dialog_msg)
+def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
+    imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix)
     imdb_detail_results = [None] * len(imdb_search_results)
 
     if imdb_search_results and (imdb_info := imdb_search_results[0]):
-        if imdb_detail_result := get_imdb_detail_info(imdb_info, detail_dialog_msg):
+        if imdb_detail_result := get_imdb_detail_info(imdb_info, dialog_msg_suffix):
             imdb_detail_results[0] = imdb_detail_result
 
     return imdb_search_results, imdb_detail_results
@@ -142,9 +144,9 @@ def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_res
     return display_lines
 
 
-def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None, search_dialog_msg: str = None, detail_dialog_msg: str = None):
+def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None,  dialog_msg_suffix: str = ''):
     if auto_search:
-        imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file, search_dialog_msg=search_dialog_msg, detail_dialog_msg=detail_dialog_msg)
+        imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file, dialog_msg_suffix)
     else:
         imdb_search_results = []
         imdb_detail_results = []
@@ -182,7 +184,7 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
 
             if run_result.row_index == 0:
                 try:
-                    imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file, search_dialog_msg=search_dialog_msg, detail_dialog_msg=detail_dialog_msg)
+                    imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file, dialog_msg_suffix)
                     if not imdb_search_results:
                         with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
                             dialog_box.run()
@@ -222,7 +224,7 @@ class MyMenu(curses_gui.MainMenu):
     def __init__(self):
         super(MyMenu, self).__init__()
         self.video_file_path: str = 'imdb_video_info.json'
-        self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = None
+        self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = []
         self.video_files_is_dirty: bool = False
         self.logger = logging.getLogger()
 
@@ -326,6 +328,11 @@ class MyMenu(curses_gui.MainMenu):
 
 
     def display_all_video_file_data(self):
+        if not self.video_files:
+            with curses_gui.DialogBox(prompt=['No video files to process'], buttons_text=['OK']) as dialog_box:
+                dialog_box.run()
+            return
+
         header_columns = [curses_gui.Column('', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('YEAR', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
@@ -387,9 +394,8 @@ class MyMenu(curses_gui.MainMenu):
             additional_commands.append('Stop Updating')
 
             try:
-                search_dialog_msg = f'Fetching IMDB Search Info for "{video_file.scrubbed_file_name}" [{i}/{num_video_files}]...'
-                detail_dialog_msg = f'Fetching IMDB Detail Info for "{video_file.scrubbed_file_name}" [{i}/{num_video_files}]...'
-                result = edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands, search_dialog_msg=search_dialog_msg, detail_dialog_msg=detail_dialog_msg)
+                dialog_msg_suffix = f'[{i}/{num_video_files}]'
+                result = edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands, dialog_msg_suffix=dialog_msg_suffix)
                 if video_file.is_dirty:
                     self.video_files_is_dirty = True
                 if result == 'Stop Updating':
