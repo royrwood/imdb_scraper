@@ -330,7 +330,6 @@ class MyMenu(curses_gui.MainMenu):
     #     with curses_gui.ScrollingPanel(rows=display_lines, inner_padding=True, header_row=header_row) as scrolling_panel:
     #         scrolling_panel.run()
 
-
     def display_all_video_file_data(self):
         header_columns = [curses_gui.Column('', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
                           curses_gui.Column('NAME', colour=curses_gui.CursesColourBinding.COLOUR_CYAN_BLACK),
