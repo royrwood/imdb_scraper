@@ -39,10 +39,7 @@ def show_exception_details(exc_type, exc_value, exc_traceback):
         return
 
 def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg_suffix: str = '') -> Optional[imdb_utils.IMDBInfo]:
-    if dialog_msg_suffix:
-        dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}" {dialog_msg_suffix}...'
-    else:
-        dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"{dialog_msg_suffix}...'
+    dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"{dialog_msg_suffix}'
     imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_info.imdb_tt)
     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)
     if threaded_dialog_result.dialog_result is not None:
@@ -56,10 +53,7 @@ def get_imdb_detail_info(imdb_info: imdb_utils.IMDBInfo, dialog_msg_suffix: str 
     return threaded_dialog_result.selectable_thread.callable_result
 
 def get_imdb_search_info(file_name, file_year, dialog_msg_suffix: str = '') -> List[imdb_utils.IMDBInfo]:
-    if dialog_msg_suffix:
-        dialog_msg = f'Fetching IMDB Search Info for "{file_name}" {dialog_msg_suffix}...'
-    else:
-        dialog_msg = f'Fetching IMDB Search Info for "{file_name}"...'
+    dialog_msg = f'Fetching IMDB Search Info for "{file_name}"{dialog_msg_suffix}'
     imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
     threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)
     if threaded_dialog_result.dialog_result is not None:
@@ -397,7 +391,7 @@ class MyMenu(curses_gui.MainMenu):
             additional_commands.append('Stop Updating')
 
             try:
-                dialog_msg_suffix = f'[{i}/{num_video_files}]'
+                dialog_msg_suffix = f' [{i}/{num_video_files}]...'
                 result = edit_individual_video_file(video_file, auto_search=True, additional_commands=additional_commands, dialog_msg_suffix=dialog_msg_suffix)
                 if video_file.is_dirty:
                     self.video_files_is_dirty = True
