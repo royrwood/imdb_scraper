@@ -125,7 +125,7 @@ def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_res
         imdb_detail_lines.append(f'imdb_genres: {imdb_info.imdb_genres}')
 
         wrap_width = min(panel_width - 20, 100)
-        plot_lines = textwrap.wrap(imdb_info.imdb_plot, width=wrap_width)
+        plot_lines = textwrap.wrap(imdb_info.imdb_plot, width=wrap_width) or ['']
         imdb_detail_lines.append(f'')
         imdb_detail_lines.append(f'imdb_plot:   {plot_lines[0]}')
         for plot_line in plot_lines[1:]:
