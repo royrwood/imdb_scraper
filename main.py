@@ -97,7 +97,7 @@ def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_detail_res
     return display_lines
 
 
-class VideoFileEdit:
+class VideoFileEditor:
     def __init__(self, video_file: imdb_utils.VideoFile, additional_commands: List[str] = None):
         self.video_file = video_file
         self.additional_commands = additional_commands
@@ -117,6 +117,15 @@ class VideoFileEdit:
         self.video_info_json_start_row = -1
         self.video_info_json_end_row = -1
 
+    def set_video_file_to_currently_selected_imdb_detail_result(self):
+        imdb_detail_result = self.imdb_detail_results[self.imdb_selected_detail_index]
+        self.video_file.imdb_tt = imdb_detail_result.imdb_tt
+        self.video_file.imdb_rating = imdb_detail_result.imdb_rating
+        self.video_file.imdb_name = imdb_detail_result.imdb_name
+        self.video_file.imdb_year = imdb_detail_result.imdb_year
+        self.video_file.imdb_genres = imdb_detail_result.imdb_genres
+        self.video_file.imdb_plot = imdb_detail_result.imdb_plot
+        self.video_file.is_dirty = True
 
     def load_imdb_search_info(self, file_name: str, file_year = '', dialog_msg_suffix = ''):
         self.imdb_search_results = list()
@@ -248,18 +257,15 @@ class VideoFileEdit:
         return self.display_lines
 
 def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None,  dialog_msg_suffix: str = ''):
-    video_file_edit = VideoFileEdit(video_file, additional_commands)
+    video_file_editor = VideoFileEditor(video_file, additional_commands)
 
     if auto_search:
-        if video_file.scrubbed_file_year:
-            video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix=dialog_msg_suffix)
-        else:
-            video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, dialog_msg_suffix=dialog_msg_suffix)
+        video_file_editor.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix=dialog_msg_suffix)
 
     with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_panel:
         while True:
             panel_width, panel_height = video_panel.get_width_height()
-            display_lines = video_file_edit.setup_display_lines(panel_width, panel_height)
+            display_lines = video_file_editor.setup_display_lines(panel_width, panel_height)
 
             video_panel.set_rows(display_lines)
             # if video_panel_hilited_row:
@@ -272,54 +278,31 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
             if run_result.key == curses_gui.Keycodes.ESCAPE:
                 raise UserCancelException()
 
-            if run_result.row_index == 0:
+            if run_result.row_index == 0 or run_result.row_index == 1:
+                ask_for_name = bool(run_result.row_index == 1)
                 try:
-                    video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix=dialog_msg_suffix)
+                    video_file_editor.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, ask_for_name=ask_for_name, dialog_msg_suffix=dialog_msg_suffix)
                 except UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
-            elif run_result.row_index == 1:
-                try:
-                    video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, ask_for_name=True, dialog_msg_suffix=dialog_msg_suffix)
-                except UserCancelException:
-                    logging.info('User cancelled IMDB search/detail fetch')
+            elif video_file_editor.imdb_search_results and video_file_editor.imdb_search_results_start_row <= run_result.row_index < video_file_editor.imdb_search_results_end_row:
+                current_imdb_selected_detail_index = video_file_editor.imdb_selected_detail_index
+                new_imdb_selected_detail_index = run_result.row_index - video_file_editor.imdb_search_results_start_row
 
-            elif video_file_edit.imdb_search_results and video_file_edit.imdb_search_results_start_row <= run_result.row_index < video_file_edit.imdb_search_results_end_row:
-                try:
-                    imdb_selected_detail_index = run_result.row_index - video_file_edit.imdb_search_results_start_row
-                    video_file_edit.load_imdb_detail_info(imdb_selected_detail_index, dialog_msg_suffix)
-                    video_file_edit.imdb_selected_detail_index = imdb_selected_detail_index
-                except UserCancelException:
-                    logging.info('User cancelled IMDB search/detail fetch')
+                if new_imdb_selected_detail_index == current_imdb_selected_detail_index:
+                    video_file_editor.set_video_file_to_currently_selected_imdb_detail_result()
+                    return video_file
+                else:
+                    try:
+                        video_file_editor.load_imdb_detail_info(new_imdb_selected_detail_index, dialog_msg_suffix)
+                        video_file_editor.imdb_selected_detail_index = new_imdb_selected_detail_index
+                    except UserCancelException:
+                        logging.info('User cancelled IMDB search/detail fetch')
 
-#             elif additional_commands and additional_command_start_row <= run_result.row_index < additional_command_end_row:
-#                 return additional_commands[run_result.row_index - 2]
-#
-#             elif imdb_search_results and imdb_search_results_start_row <= run_result.row_index < imdb_search_results_end_row:
-#                 imdb_selected_detail_index = run_result.row_index - imdb_search_results_start_row
-#
-#             # elif run_result.row_index >= imdb_detail_start_row:
-#             #     if (imdb_selected_detail_index == run_result.row_index - imdb_detail_start_row) and (imdb_detail_result := imdb_detail_results[imdb_selected_detail_index]):
-#             #         video_file.imdb_tt = imdb_detail_result.imdb_tt
-#             #         video_file.imdb_rating = imdb_detail_result.imdb_rating
-#             #         video_file.imdb_name = imdb_detail_result.imdb_name
-#             #         video_file.imdb_year = imdb_detail_result.imdb_year
-#             #         video_file.imdb_genres = imdb_detail_result.imdb_genres
-#             #         video_file.imdb_plot = imdb_detail_result.imdb_plot
-#             #         video_file.is_dirty = True
-#             #         return video_file
-#             #
-#             #     imdb_selected_detail_index = run_result.row_index - imdb_detail_start_row
-#             #
-#             #     if imdb_detail_results[imdb_selected_detail_index] is None:
-#             #         try:
-#             #             imdb_info = imdb_search_results[imdb_selected_detail_index]
-#             #             if imdb_detail_result := get_imdb_detail_info(imdb_info):
-#             #                 imdb_detail_results[imdb_selected_detail_index] = imdb_detail_result
-#             #         except UserCancelException:
-#             #             logging.info('User cancelled IMDB search/detail fetch')
-#             #         finally:
-#             #             continue
+            elif additional_commands and video_file_editor.additional_command_start_row <= run_result.row_index < video_file_editor.additional_command_end_row:
+                additional_command_index = run_result.row_index - video_file_editor.imdb_search_results_start_row
+                return additional_commands[additional_command_index]
+
 
 # def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None,  dialog_msg_suffix: str = ''):
 #     imdb_search_results = []
