@@ -69,9 +69,9 @@ def get_imdb_search_info(file_name, file_year, dialog_msg_suffix: str = '') -> L
 
 def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], additional_commands: List[str] = None) -> Tuple[List, int, int]:
     if video_file.scrubbed_file_year:
-        display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"']
+        display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"', f'Search IMDB for other target']
     else:
-        display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name}"']
+        display_lines = [f'Search IMDB for "{video_file.scrubbed_file_name}"', f'Search IMDB for other target']
     if additional_commands:
         display_lines.extend(additional_commands)
     display_lines.append(curses_gui.HorizontalLine())
@@ -81,8 +81,8 @@ def setup_video_file_edit_header(video_file: imdb_utils.VideoFile, imdb_search_r
     return display_lines, imdb_detail_start_row, imdb_detail_end_row
 
 
-def setup_search_results_detail_results(video_file: imdb_utils.VideoFile, dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
-    imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix)
+def setup_search_results_detail_results(file_name: str, file_year: str = '', dialog_msg_suffix: str = '') -> Tuple[List[Optional[imdb_utils.IMDBInfo]], List[Optional[imdb_utils.IMDBInfo]]]:
+    imdb_search_results = get_imdb_search_info(file_name, file_year, dialog_msg_suffix)
     imdb_detail_results = [None] * len(imdb_search_results)
 
     if imdb_search_results and (imdb_info := imdb_search_results[0]):
@@ -143,7 +143,7 @@ def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_res
 
 def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None,  dialog_msg_suffix: str = ''):
     if auto_search:
-        imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file, dialog_msg_suffix)
+        imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix)
     else:
         imdb_search_results = []
         imdb_detail_results = []
@@ -179,9 +179,18 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
             if run_result.key == curses_gui.Keycodes.ESCAPE:
                 raise UserCancelException()
 
-            if run_result.row_index == 0:
+            if run_result.row_index == 0 or run_result.row_index == 1:
+                search_file_name = video_file.scrubbed_file_name
+                search_file_year = video_file.scrubbed_file_year
+
+                if run_result.row_index == 1:
+                    with curses_gui.InputPanel(prompt='Enter IMDB search target: ', default_value=video_file.scrubbed_file_name) as input_panel:
+                        search_file_name = input_panel.run()
+                    if search_file_name is None:
+                        continue
+
                 try:
-                    imdb_search_results, imdb_detail_results = setup_search_results_detail_results(video_file, dialog_msg_suffix)
+                    imdb_search_results, imdb_detail_results = setup_search_results_detail_results(search_file_name, search_file_year, dialog_msg_suffix)
                     if not imdb_search_results:
                         with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
                             dialog_box.run()
@@ -191,8 +200,8 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                 except UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
-            elif additional_commands and 1 <= run_result.row_index < 1 + len(additional_commands):
-                return additional_commands[run_result.row_index - 1]
+            elif additional_commands and 2 <= run_result.row_index < 2 + len(additional_commands):
+                return additional_commands[run_result.row_index - 2]
 
             elif imdb_detail_start_row <= run_result.row_index < imdb_detail_end_row:
                 if (imdb_selected_detail_index == run_result.row_index - imdb_detail_start_row) and (imdb_detail_result := imdb_detail_results[imdb_selected_detail_index]):
