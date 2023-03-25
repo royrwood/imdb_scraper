@@ -44,9 +44,9 @@ class VideoFileEditor:
         self.additional_commands = additional_commands
 
         self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = list()
+        self.imdb_search_results_updated = False
         self.imdb_detail_results: List[Optional[imdb_utils.IMDBInfo]] = list()
         self.imdb_selected_detail_index = None
-        self.video_panel_hilited_row = None
 
         self.display_lines = list()
         self.additional_command_start_row = -1
@@ -84,6 +84,7 @@ class VideoFileEditor:
             raise AsyncThreadException()
 
         self.imdb_search_results = threaded_dialog_result.selectable_thread.callable_result
+        self.imdb_search_results_updated = True
 
         if not self.imdb_search_results:
             with curses_gui.DialogBox(prompt=[f'No search results for "{file_name}"'], buttons_text=['OK']) as dialog_box:
@@ -207,11 +208,12 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
         while True:
             panel_width, panel_height = video_panel.get_width_height()
             display_lines = video_file_editor.setup_display_lines(panel_width, panel_height)
-
             video_panel.set_rows(display_lines)
-            # if video_panel_hilited_row:
-            #     video_panel.set_hilighted_row(video_panel_hilited_row)
-            #     video_panel_hilited_row = None
+
+            if video_file_editor.imdb_search_results_updated:
+                video_panel.set_hilighted_row(video_file_editor.imdb_search_results_start_row)
+                video_file_editor.imdb_search_results_updated = False
+
             video_panel.show()
 
             run_result = video_panel.run()
@@ -219,7 +221,7 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
             if run_result.key == curses_gui.Keycodes.ESCAPE:
                 raise UserCancelException()
 
-            if run_result.row_index == 0 or run_result.row_index == 1:
+            elif run_result.row_index == 0 or run_result.row_index == 1:
                 ask_for_name = bool(run_result.row_index == 1)
                 try:
                     video_file_editor.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, ask_for_name=ask_for_name, dialog_msg_suffix=dialog_msg_suffix)
@@ -233,6 +235,8 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                 if new_imdb_selected_detail_index == current_imdb_selected_detail_index:
                     video_file_editor.set_video_file_to_currently_selected_imdb_detail_result()
                     return video_file
+                elif video_file_editor.imdb_detail_results and video_file_editor.imdb_detail_results[new_imdb_selected_detail_index]:
+                    video_file_editor.imdb_selected_detail_index = new_imdb_selected_detail_index
                 else:
                     try:
                         video_file_editor.load_imdb_detail_info(new_imdb_selected_detail_index, dialog_msg_suffix)
@@ -241,7 +245,7 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                         logging.info('User cancelled IMDB search/detail fetch')
 
             elif additional_commands and video_file_editor.additional_command_start_row <= run_result.row_index < video_file_editor.additional_command_end_row:
-                additional_command_index = run_result.row_index - video_file_editor.imdb_search_results_start_row
+                additional_command_index = run_result.row_index - video_file_editor.additional_command_start_row
                 return additional_commands[additional_command_index]
 
 
