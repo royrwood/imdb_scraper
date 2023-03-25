@@ -67,27 +67,8 @@ def get_imdb_search_info(file_name, file_year, dialog_msg_suffix: str = '') -> L
     return threaded_dialog_result.selectable_thread.callable_result
 
 
-def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo], imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], panel_width: int) -> List:
+def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_detail_results: List[imdb_utils.IMDBInfo], imdb_selected_detail_index: Optional[int], panel_width: int) -> List:
     display_lines = []
-
-    if imdb_search_results:
-        max_name_length = 0
-        max_tt_length = 0
-        for i in range(len(imdb_search_results)):
-            imdb_info = imdb_detail_results[i] or imdb_search_results[i]
-            max_name_length = max(max_name_length, len(imdb_info.imdb_name))
-            max_tt_length = max(max_tt_length, len(imdb_info.imdb_tt))
-
-        max_name_length = min(max_name_length, 75)
-
-        for i in range(len(imdb_search_results)):
-            imdb_info = imdb_detail_results[i] or imdb_search_results[i]
-            if i == imdb_selected_detail_index:
-                imdb_info_str = f'=> {imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
-            else:
-                imdb_info_str = f'   {imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
-            display_lines.append(imdb_info_str)
-        display_lines.append(curses_gui.HorizontalLine())
 
     if imdb_selected_detail_index is not None and imdb_detail_results and imdb_detail_results[imdb_selected_detail_index]:
         imdb_info = imdb_detail_results[imdb_selected_detail_index]
@@ -117,52 +98,84 @@ def setup_video_file_edit_body(video_file: imdb_utils.VideoFile, imdb_search_res
 
 
 def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None,  dialog_msg_suffix: str = ''):
-    def format_edit_video_file_header_lines() -> List:
-        if video_file.scrubbed_file_year:
-            header_lines = [f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"', f'Search IMDB for other target']
-        else:
-            header_lines = [f'Search IMDB for "{video_file.scrubbed_file_name}"', f'Search IMDB for other target']
-        if additional_commands:
-            header_lines.extend(additional_commands)
-        header_lines.append(curses_gui.HorizontalLine())
-        return header_lines
-
     imdb_search_results = []
     imdb_detail_results = []
+    imdb_selected_detail_index = None
+    video_panel_hilited_row = None
+
     if auto_search:
-        imdb_search_results = get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix)
-        if imdb_search_results:
-            imdb_detail_results = [None] * len(imdb_search_results)  # type: List[Optional[imdb_utils.IMDBInfo]]
-            imdb_detail_result = get_imdb_detail_info(imdb_search_results[0], dialog_msg_suffix)
-            if imdb_detail_result:
+        if imdb_search_results := get_imdb_search_info(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix):
+            imdb_detail_results : List[Optional[imdb_utils.IMDBInfo]] = [None] * len(imdb_search_results)
+            if imdb_detail_result := get_imdb_detail_info(imdb_search_results[0], dialog_msg_suffix):
                 imdb_detail_results[0] = imdb_detail_result
-
-    if auto_search and not imdb_search_results:
-        with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
-            dialog_box.run()
-
-    if auto_search and imdb_detail_results:
-        display_lines_header = format_edit_video_file_header_lines()
-        imdb_detail_start_row = len(display_lines_header)
-        imdb_selected_detail_index = 0
-        forced_video_panel_hilited_row = imdb_detail_start_row
-    else:
-        imdb_selected_detail_index = None
-        forced_video_panel_hilited_row = None
+                imdb_selected_detail_index = 0
+        else:
+            with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
+                dialog_box.run()
 
     with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_panel:
         while True:
-            panel_width, panel_height = video_panel.get_width_height()
+            additional_command_start_row = -1
+            additional_command_end_row = -1
+            imdb_search_results_start_row = -1
+            imdb_search_results_end_row = -1
+            imdb_detail_start_row = -1
+            imdb_detail_end_row = -1
+            video_info_json_start_row = -1
+            video_info_json_end_row = -1
 
-            display_lines_header = format_edit_video_file_header_lines()
-            imdb_detail_start_row = len(display_lines_header)
-            display_lines_body = setup_video_file_edit_body(video_file, imdb_search_results, imdb_detail_results, imdb_selected_detail_index, panel_width)
-            display_lines = display_lines_header + display_lines_body
+            display_lines = list()
+            if video_file.scrubbed_file_year:
+                display_lines.append(f'Search IMDB for "{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})"')
+            else:
+                display_lines.append(f'Search IMDB for "{video_file.scrubbed_file_name}"')
+            display_lines.append(f'Search IMDB for other target')
+
+            if additional_commands:
+                additional_command_start_row = len(display_lines)
+                display_lines.extend(additional_commands)
+                additional_command_end_row = len(display_lines)
+
+            display_lines.append(curses_gui.HorizontalLine())
+
+            if imdb_search_results:
+                max_name_length = 0
+                max_tt_length = 0
+                for i in range(len(imdb_search_results)):
+                    imdb_info = imdb_detail_results[i] or imdb_search_results[i]
+                    max_name_length = max(max_name_length, len(imdb_info.imdb_name))
+                    max_tt_length = max(max_tt_length, len(imdb_info.imdb_tt))
+                max_name_length = min(max_name_length, 75)
+
+                imdb_search_results_start_row = len(display_lines)
+                for i in range(len(imdb_search_results)):
+                    imdb_info = imdb_detail_results[i] or imdb_search_results[i]
+                    if i == imdb_selected_detail_index:
+                        imdb_info_str = f'=> {imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
+                    else:
+                        imdb_info_str = f'   {imdb_info.imdb_tt:{max_tt_length}} {imdb_info.imdb_name[:max_name_length]: <{max_name_length}}  [{imdb_info.imdb_year[:4]: <4}] [{imdb_info.imdb_rating: <3}] {imdb_info.imdb_plot}'
+                    display_lines.append(imdb_info_str)
+                imdb_search_results_end_row = len(display_lines)
+                display_lines.append(curses_gui.HorizontalLine())
+
+            if imdb_selected_detail_index is not None and imdb_detail_results and imdb_detail_results[imdb_selected_detail_index]:
+                pass
+            else:
+                json_str = json.dumps(dataclasses.asdict(video_file), indent=4, sort_keys=True)
+                json_str_lines = json_str.splitlines()
+                video_info_json_start_row = len(display_lines)
+                display_lines.extend(json_str_lines)
+                video_info_json_end_row = len(display_lines)
+
+            # panel_width, panel_height = video_panel.get_width_height()
+            # imdb_detail_start_row = len(display_lines_header)
+            # display_lines_body = setup_video_file_edit_body(video_file, imdb_detail_results, imdb_selected_detail_index, panel_width)
+            # display_lines = display_lines_header + display_lines_body
 
             video_panel.set_rows(display_lines)
-            if forced_video_panel_hilited_row:
-                video_panel.set_hilighted_row(forced_video_panel_hilited_row)
-                forced_video_panel_hilited_row = None
+            if video_panel_hilited_row:
+                video_panel.set_hilighted_row(video_panel_hilited_row)
+                video_panel_hilited_row = None
             video_panel.show()
 
             run_result = video_panel.run()
@@ -184,7 +197,7 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                     imdb_detail_results = []
                     imdb_search_results = get_imdb_search_info(search_file_name, search_file_year, dialog_msg_suffix)
                     if imdb_search_results:
-                        imdb_detail_results = [None] * len(imdb_search_results)  # type: List[Optional[imdb_utils.IMDBInfo]]
+                        imdb_detail_results : List[Optional[imdb_utils.IMDBInfo]] = [None] * len(imdb_search_results)
                         imdb_detail_result = get_imdb_detail_info(imdb_search_results[0], dialog_msg_suffix)
                         if imdb_detail_result:
                             imdb_detail_results[0] = imdb_detail_result
@@ -192,36 +205,36 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
                             with curses_gui.DialogBox(prompt=[f'No search results for "{video_file.scrubbed_file_name}"'], buttons_text=['OK']) as dialog_box:
                                 dialog_box.run()
                     else:
-                        forced_video_panel_hilited_row = imdb_detail_start_row
+                        video_panel_hilited_row = imdb_detail_start_row
                         imdb_selected_detail_index = 0
                 except UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
-            elif additional_commands and 2 <= run_result.row_index < 2 + len(additional_commands):
-                return additional_commands[run_result.row_index - 2]
-
-            elif run_result.row_index >= imdb_detail_start_row:
-                if (imdb_selected_detail_index == run_result.row_index - imdb_detail_start_row) and (imdb_detail_result := imdb_detail_results[imdb_selected_detail_index]):
-                    video_file.imdb_tt = imdb_detail_result.imdb_tt
-                    video_file.imdb_rating = imdb_detail_result.imdb_rating
-                    video_file.imdb_name = imdb_detail_result.imdb_name
-                    video_file.imdb_year = imdb_detail_result.imdb_year
-                    video_file.imdb_genres = imdb_detail_result.imdb_genres
-                    video_file.imdb_plot = imdb_detail_result.imdb_plot
-                    video_file.is_dirty = True
-                    return video_file
-
-                imdb_selected_detail_index = run_result.row_index - imdb_detail_start_row
-
-                if imdb_detail_results[imdb_selected_detail_index] is None:
-                    try:
-                        imdb_info = imdb_search_results[imdb_selected_detail_index]
-                        if imdb_detail_result := get_imdb_detail_info(imdb_info):
-                            imdb_detail_results[imdb_selected_detail_index] = imdb_detail_result
-                    except UserCancelException:
-                        logging.info('User cancelled IMDB search/detail fetch')
-                    finally:
-                        continue
+            # elif additional_commands and additional_command_start_row <= run_result.row_index < additional_command_end_row:
+            #     return additional_commands[run_result.row_index - 2]
+            #
+            # elif run_result.row_index >= imdb_detail_start_row:
+            #     if (imdb_selected_detail_index == run_result.row_index - imdb_detail_start_row) and (imdb_detail_result := imdb_detail_results[imdb_selected_detail_index]):
+            #         video_file.imdb_tt = imdb_detail_result.imdb_tt
+            #         video_file.imdb_rating = imdb_detail_result.imdb_rating
+            #         video_file.imdb_name = imdb_detail_result.imdb_name
+            #         video_file.imdb_year = imdb_detail_result.imdb_year
+            #         video_file.imdb_genres = imdb_detail_result.imdb_genres
+            #         video_file.imdb_plot = imdb_detail_result.imdb_plot
+            #         video_file.is_dirty = True
+            #         return video_file
+            #
+            #     imdb_selected_detail_index = run_result.row_index - imdb_detail_start_row
+            #
+            #     if imdb_detail_results[imdb_selected_detail_index] is None:
+            #         try:
+            #             imdb_info = imdb_search_results[imdb_selected_detail_index]
+            #             if imdb_detail_result := get_imdb_detail_info(imdb_info):
+            #                 imdb_detail_results[imdb_selected_detail_index] = imdb_detail_result
+            #         except UserCancelException:
+            #             logging.info('User cancelled IMDB search/detail fetch')
+            #         finally:
+            #             continue
 
 
 class MyMenu(curses_gui.MainMenu):
