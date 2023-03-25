@@ -36,7 +36,7 @@ import sys
 import threading
 import traceback
 from enum import IntEnum, unique
-from typing import List, Tuple, Callable, Union, Optional
+from typing import List, Tuple, Callable, Union, Optional, Dict, Text
 
 
 # Define some nicer constants for keystrokes
@@ -181,7 +181,7 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]] = None, select_grid_cells=False, inner_padding=0, show_immediately=True, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]] = None, select_grid_cells=False, inner_padding=0, show_immediately=True, hilighted_row_index=0, hilighted_col_index=0, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
@@ -209,8 +209,8 @@ class ScrollingPanel:
         self.header_row = None
         self.num_header_rows = 0
         self.top_visible_row_index = 0
-        self.hilighted_row_index = 0
-        self.hilighted_col_index = 0
+        self.hilighted_row_index = hilighted_row_index
+        self.hilighted_col_index = hilighted_col_index
         self.height = 0
         self.width = 0
         self.top = 0
@@ -250,7 +250,7 @@ class ScrollingPanel:
             self.header_row = None
             self.num_header_rows = 0
 
-    def set_rows(self, new_rows):
+    def set_rows(self, new_rows, hilighted_row=None):
         rows = []
 
         self.column_widths = list()
@@ -291,11 +291,17 @@ class ScrollingPanel:
         # Since the row contents have changed, we need to recalculate the window geometry
         self.set_geometry()
 
+        if hilighted_row:
+            self.set_hilighted_row(hilighted_row)
+
     def set_hilighted_row(self, new_hilighted_row, top_visible_row_index=None):
         if self.hilighted_row_index != new_hilighted_row:
             self.needs_render = True
 
         self.hilighted_row_index = new_hilighted_row
+
+        if self.hilighted_row_index >= self.num_rows:
+            self.hilighted_row_index = max(self.num_rows - 1, 0)
 
         if top_visible_row_index:
             if self.top_visible_row_index != top_visible_row_index:
@@ -535,6 +541,11 @@ class ScrollingPanel:
             key = self.window.getch()
             # CURSES_STDSCR.addstr(0, 0, 'key={}     '.format(key), curses.color_pair(COLOUR_RED_BLACK))
 
+            if key == curses.KEY_BACKSPACE:
+                key = Keycodes.BACKSPACE
+            elif key == curses.KEY_DC:
+                key = Keycodes.DELETE
+
             if key in [curses.KEY_UP, curses.KEY_DOWN, curses.KEY_LEFT, curses.KEY_RIGHT, curses.KEY_PPAGE, curses.KEY_NPAGE, curses.KEY_HOME, curses.KEY_END]:
                 self.handle_keystroke(key)
             elif key in stop_key_list:
@@ -719,12 +730,15 @@ class MessagePanel:
 class InputPanel:
     """Similar to the ScrollingPanel, but handles user input.
     """
-    def __init__(self, prompt: str = '', default_value: str = '', entry_width: Optional[int] = None, allowed_input_chars: Optional[str] = None):
+    def __init__(self, prompt: str = '', default_value: str = None, entry_width: Optional[int] = None, allowed_input_chars: Optional[str] = None):
+        if default_value is None:
+            default_value = ''
+
         self.prompt = prompt
         self.prompt_width = len(self.prompt)
         self.num_rows = 1
 
-        self.input_text = default_value
+        self.input_text = str(default_value)
         self.allowed_input_chars = allowed_input_chars or 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@#$%^&*(),<.>/?;:'"[{]}-_=+"
         self.needs_render = True
 
@@ -795,7 +809,7 @@ class InputPanel:
                 if self.input_text_cursor_index < self.input_text_first_displayed_char_index:
                     self.input_text_first_displayed_char_index = self.input_text_cursor_index
                 self.needs_render = True
-        elif key == Keycodes.DELETE:
+        elif key == curses.KEY_DC or key == Keycodes.DELETE:
             if self.input_text_cursor_index >= 0:
                 self.input_text = self.input_text[:self.input_text_cursor_index] + self.input_text[self.input_text_cursor_index + 1:]
                 self.needs_render = True
@@ -1050,8 +1064,8 @@ class MainMenu(ScrollingPanel):
         while True:
             self.render()
 
-            # curses.panel.update_panels()
-            # CURSES_STDSCR.refresh()
+            curses.panel.update_panels()
+            CURSES_STDSCR.refresh()
 
             self.window.timeout(-1)
             key = self.window.getch()
@@ -1082,6 +1096,190 @@ class MainMenu(ScrollingPanel):
                 self.handle_keystroke(key)
 
 
+class TUITextItem:
+    def __init__(self, text: Text):
+        self.text: Text = text
+
+    def __repr__(self):
+        return self.text
+
+class TUITextChoiceItem:
+    def __init__(self, text: Text, choices: List[Text]):
+        self.text: Text = text
+        self.choices : List[Text] = choices
+
+    def __repr__(self):
+        return f'({self.text}, {self.choices})'
+
+class TUIListItem:
+    def __init__(self, items: List):
+        self.items_list : List = items
+
+    def __repr__(self):
+        return repr(self.items_list)
+
+class TUIDictItem:
+    def __init__(self, items: Dict):
+        self.items_dict : Dict = items
+
+    def __repr__(self):
+        return repr(self.items_dict)
+
+TUIEditableItem = TUITextItem | TUITextChoiceItem | TUIListItem | TUIDictItem
+
+class TUILabelItem:
+    def __init__(self, label: Text, item: TUIEditableItem):
+        self.label: Text = label
+        self.item: TUIEditableItem = item
+
+    def __str__(self):
+        if isinstance(self.item, TUILabelItem):
+            # Ooh, recursion to format the string...
+            return f'{self.label}: {self.item}'
+        elif isinstance(self.item, TUITextItem) or isinstance(self.item, TUITextChoiceItem):
+            return f'{self.label}: {self.item.text}'
+        elif isinstance(self.item, TUIDictItem):
+            return f'{self.label}: {{ ... }}'
+        elif isinstance(self.item, TUIListItem):
+            return f'{self.label}: [ ... ]'
+
+    def __repr__(self):
+        return f'{self.label}: {self.item}'
+
+
+def tui_edit_choice_item(tui_choice_item: TUITextChoiceItem) -> Tuple[Optional[int], bool]:
+    choices_list = tui_choice_item.choices
+    hilighted_row_index = choices_list.index(tui_choice_item.text) if tui_choice_item.text in choices_list else 0
+    with ScrollingPanel(rows=choices_list, hilighted_row_index=hilighted_row_index) as scrolling_panel:
+        while True:
+            run_result = scrolling_panel.run()
+            if run_result.key == Keycodes.ESCAPE:
+                # User cancelled pick
+                return None, False
+            elif run_result.key == Keycodes.RETURN:
+                # User picked a value
+                item_changed = tui_choice_item.text != choices_list[run_result.row_index]
+                tui_choice_item.text = choices_list[run_result.row_index]
+                return run_result.row_index, item_changed
+
+def tui_edit_text_item(tui_text_item: TUITextItem, edit_prompt: Text = '') -> Tuple[Optional[int], bool]:
+    with InputPanel(prompt=edit_prompt, default_value=tui_text_item.text) as input_panel:
+        new_value = input_panel.run()
+        if new_value is not None:
+            tui_text_item.text = new_value
+            return 0, True
+        else:
+            return None, False
+
+def tui_edit_list_of_items(tui_list_item: TUIListItem) -> Tuple[Optional[int], bool]:
+    def setup_display_rows(items_list):
+        display_list = list()
+        for tui_item in items_list:
+            if isinstance(tui_item, TUILabelItem):
+                # Let the TUILabelItem format the display string
+                display_list.append(str(tui_item))
+            elif isinstance(tui_item, TUITextItem) or isinstance(tui_item, TUITextChoiceItem):
+                display_list.append(tui_item.text)
+            elif isinstance(tui_item, TUIDictItem):
+                display_list.append('{ ... }')
+            elif isinstance(tui_item, TUIListItem):
+                display_list.append('[ ... ]')
+        return display_list
+
+    data_changed_final = False
+    display_rows = setup_display_rows(tui_list_item.items_list)
+
+    with ScrollingPanel(rows=display_rows) as scrolling_panel:
+        while True:
+            # Wait for the user to do something
+            run_result = scrolling_panel.run(stop_key_list = [Keycodes.ESCAPE, Keycodes.RETURN, Keycodes.BACKSPACE, Keycodes.DELETE])
+            edit_item = tui_list_item.items_list[run_result.row_index]
+            refresh_display = False
+
+            if run_result.key == Keycodes.ESCAPE:
+                # User cancelled, so GTFO
+                return None, data_changed_final
+            elif run_result.key == Keycodes.BACKSPACE or run_result.key == Keycodes.DELETE:
+                target_item = edit_item.item if isinstance(edit_item, TUILabelItem) else edit_item
+                if isinstance(target_item, TUITextItem) or isinstance(target_item, TUITextChoiceItem):
+                    data_changed = target_item.text != ''
+                    target_item.text = ''
+                    if data_changed:
+                        data_changed_final = True
+                        refresh_display = True
+            elif run_result.key == Keycodes.RETURN:
+                return_code, data_changed = tui_edit_single_item(edit_item)
+                if data_changed:
+                    data_changed_final = True
+                    refresh_display = True
+
+            # Refresh the display with the new values, if needed
+            if refresh_display:
+                display_rows = setup_display_rows(tui_list_item.items_list)
+                scrolling_panel.set_rows(display_rows, run_result.row_index)
+
+def tui_edit_dict_item(tui_dict_item: TUIDictItem) -> Tuple[Optional[int], bool]:
+    # Set up a list of TUILabelItem objects and then use tui_edit_list_of_items to edit it
+    tui_labeled_items_list = [TUILabelItem(key, value) for key, value in tui_dict_item.items_dict.items()]
+    tui_list_item = TUIListItem(tui_labeled_items_list)
+    return_code, data_changed = tui_edit_list_of_items(tui_list_item)
+
+    return return_code, data_changed
+
+def tui_edit_single_item(edit_item: TUIEditableItem, edit_prompt: Text = '') -> Tuple[Optional[int], bool]:
+    if isinstance(edit_item, TUILabelItem):
+        return tui_edit_single_item(edit_item.item, edit_prompt=f'{edit_item.label}: ')
+    if isinstance(edit_item, TUITextItem):
+        # Edit the text item
+        return tui_edit_text_item(edit_item, edit_prompt)
+    elif isinstance(edit_item, TUITextChoiceItem):
+        # Pick from a list of choices
+        return tui_edit_choice_item(edit_item)
+    elif isinstance(edit_item, TUIListItem):
+        # Edit the list of items
+        return tui_edit_list_of_items(edit_item)
+    elif isinstance(edit_item, TUIDictItem):
+        # Edit the dict of items
+        return tui_edit_dict_item(edit_item)
+    else:
+        return None, False
+
+def tui_edit_json(json_obj):
+    def convert_json_item_to_tui(json_item):
+        if isinstance(json_item, tuple):
+            return TUITextChoiceItem(str(json_item[0]), [str(choice) for choice in json_item[1]])
+        elif isinstance(json_item, str) or isinstance(json_item, int) or isinstance(json_item, float):
+            return TUITextItem(str(json_item))
+        elif isinstance(json_item, list):
+            # tui_list = [convert_json_item_to_tui(list_item) for list_item in json_item]
+            tui_list = [TUILabelItem(str(i), convert_json_item_to_tui(list_item)) for i, list_item in enumerate(json_item)]
+            return TUIListItem(tui_list)
+        elif isinstance(json_item, dict):
+            tui_dict = {key: convert_json_item_to_tui(value) for key, value in json_item.items()}
+            return TUIDictItem(tui_dict)
+        else:
+            raise Exception('Unhandled json item [%s]: %s', type(json_item), json_item)
+
+    def convert_tui_item_to_json(tui_item):
+        if isinstance(tui_item, TUITextChoiceItem) or isinstance(tui_item, TUITextItem):
+            return tui_item.text
+        elif isinstance(tui_item, TUIListItem):
+            return [convert_tui_item_to_json(list_item) for list_item in tui_item.items_list]
+        elif isinstance(tui_item, TUIDictItem):
+            return {key: convert_tui_item_to_json(value) for key, value in tui_item.items_dict.items()}
+        elif isinstance(tui_item, TUILabelItem):
+            return convert_tui_item_to_json(tui_item.item)
+        else:
+            raise Exception('Unhandled tui item [%s]: %s', type(tui_item), tui_item)
+
+    # Convert a JSON dict/list into TUI objects, edit them, then return the final JSON
+    tui_edit_obj = convert_json_item_to_tui(json_obj)
+    tui_edit_single_item(tui_edit_obj)
+    final_json = convert_tui_item_to_json(tui_edit_obj)
+
+    return final_json
+
+
 def interactive_main(stdscr: CursesStdscrType, main_menu_cls: type) -> None:
     # LOGGER.info('type(stdscr) = %s', str(type(stdscr)))  # Weird: type(stdscr) = <type '_curses.curses window'>
 
@@ -1089,7 +1287,7 @@ def interactive_main(stdscr: CursesStdscrType, main_menu_cls: type) -> None:
     global CURSES_STDSCR
     CURSES_STDSCR = stdscr
 
-    # # Figure out what the preferred locale encoding is and use that when asking curses to render unicode strings
+    # # Figure out what the preferred locale encoding is so we can use that when asking curses to render unicode strings
     # locale.setlocale(locale.LC_ALL, '')
     #
     # global PREFERRED_ENCODING
