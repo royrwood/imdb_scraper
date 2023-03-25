@@ -118,12 +118,12 @@ class VideoFileEdit:
         self.video_info_json_end_row = -1
 
 
-    def load_imdb_search_info(self, search_target, dialog_msg_suffix = ''):
+    def load_imdb_search_info(self, file_name: str, file_year = '', dialog_msg_suffix = ''):
         self.imdb_search_results = list()
         self.imdb_detail_results = list()
 
-        dialog_msg = f'Fetching IMDB Search Info for "{search_target}"{dialog_msg_suffix}'
-        imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, search_target)
+        dialog_msg = f'Fetching IMDB Search Info for "{file_name}"{dialog_msg_suffix}'
+        imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
         threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)
         if threaded_dialog_result.dialog_result is not None:
             raise UserCancelException()
@@ -136,7 +136,7 @@ class VideoFileEdit:
         self.imdb_search_results = threaded_dialog_result.selectable_thread.callable_result
 
         if not self.imdb_search_results:
-            with curses_gui.DialogBox(prompt=[f'No search results for "{search_target}"'], buttons_text=['OK']) as dialog_box:
+            with curses_gui.DialogBox(prompt=[f'No search results for "{file_name}"'], buttons_text=['OK']) as dialog_box:
                 dialog_box.run()
             return
 
@@ -166,21 +166,16 @@ class VideoFileEdit:
         self.imdb_detail_results[imdb_info_index] = imdb_detail_result
 
     def do_search_and_load_detail(self, file_name: str, file_year = '', ask_for_name = False, dialog_msg_suffix = ''):
-        search_target = f'{file_name} ({file_year})'
-
         if ask_for_name:
-            if file_year:
-                search_target = f'{file_name} ({file_year})'
-            else:
-                search_target = file_name
+            file_year = None
 
-            with curses_gui.InputPanel(prompt='Enter IMDB search target: ', default_value=search_target) as input_panel:
-                search_target = input_panel.run()
+            with curses_gui.InputPanel(prompt='Enter IMDB search target: ', default_value=file_name) as input_panel:
+                file_name = input_panel.run()
 
-            if search_target is None:
+            if file_name is None:
                 return
 
-        self.load_imdb_search_info(search_target, dialog_msg_suffix=dialog_msg_suffix)
+        self.load_imdb_search_info(file_name, file_year, dialog_msg_suffix=dialog_msg_suffix)
         if self.imdb_search_results:
             self.load_imdb_detail_info(0, dialog_msg_suffix)
         if self.imdb_detail_results and self.imdb_detail_results[0]:
@@ -257,11 +252,9 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
 
     if auto_search:
         if video_file.scrubbed_file_year:
-            search_target = f'{video_file.scrubbed_file_name} ({video_file.scrubbed_file_year})'
+            video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix=dialog_msg_suffix)
         else:
-            search_target = video_file.scrubbed_file_name
-
-        video_file_edit.do_search_and_load_detail(search_target, dialog_msg_suffix=dialog_msg_suffix)
+            video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, dialog_msg_suffix=dialog_msg_suffix)
 
     with curses_gui.ScrollingPanel(rows=[''], height=0.75, width=0.75) as video_panel:
         while True:
@@ -281,13 +274,13 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bo
 
             if run_result.row_index == 0:
                 try:
-                    video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
+                    video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, dialog_msg_suffix=dialog_msg_suffix)
                 except UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
             elif run_result.row_index == 1:
                 try:
-                    video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, ask_for_name=True)
+                    video_file_edit.do_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year, ask_for_name=True, dialog_msg_suffix=dialog_msg_suffix)
                 except UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
