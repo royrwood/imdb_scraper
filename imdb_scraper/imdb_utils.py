@@ -112,13 +112,15 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero-title-block__title']/text()").get()
     if not imdb_name:
-        imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero-title-block__title']/text()").get() or imdb_response_selector.xpath("//h1[@data-testid='hero__pageTitle']/span/text()").get() or ''
+        imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero__pageTitle']/span/text()").get()
     if not imdb_name:
         imdb_name = ''
     imdb_rating = imdb_response_selector.xpath("//div[@data-testid='hero-rating-bar__aggregate-rating__score']/span/text()").get() or ''
     imdb_genres = imdb_response_selector.xpath("//div[@data-testid='genres']/div/a/span/text()").getall()
     imdb_plot = imdb_response_selector.xpath("//span[@data-testid='plot-xl']/text()").get() or ''
-    imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li//a/text()").get()
+    imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]//li/a/text()").get()
+    if not imdb_year:
+        imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li//a/text()").get()
     if not imdb_year:
         imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/ul/li[1]/a/text()").get()
     if not imdb_year:

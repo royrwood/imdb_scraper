@@ -568,151 +568,40 @@ class ScrollingPanel:
             return run_result.row_index
 
 
-class MessagePanel:
+
+class MessagePanel(ScrollingPanel):
     """Similar to the ScrollingPanel, but just displays a message and waits for user to press enter/escape.
        The message_lines can be a list of str/unicode or tuples of (str/unicode, colour) like this:
            message_panel = MessagePanel([('Exception occurred:', CursesColourBinding.COLOUR_BLACK_RED), ''])
     """
-    def __init__(self, message_lines: Union[str, List[str], Tuple[str, CursesColourBinding], List[Tuple[str, CursesColourBinding]]] = ''):
-        self.window = None
-        self.panel = None
-        self.message_lines = []
-        self.num_rows = 0
-        self.rows_max_width = 0
-        self.needs_render = True
-        self.height = 0
-        self.width = 0
-        self.top = 0
-        self.left = 0
-        self.content_top = 0
-        self.content_left = 0
-        self.content_height = 0
-        self.content_width = 0
+    def __init__(self, message_lines: Union[str, List[str], Tuple[str, CursesColourBinding], List[Tuple[str, CursesColourBinding]]] = '', width=None, height=None):
+        super().__init__(rows=message_lines, width=width, height=height, show_immediately=True, hilighted_row_index=-1)
 
-        self.stdscr_height, self.stdscr_width = CURSES_STDSCR.getmaxyx()  # If/when we eventually handle dynamic screen sizing, this will need to be updated
+        if isinstance(message_lines, str):
+            self.message_lines = [message_lines]
+        else:
+            self.message_lines = message_lines
 
-        if message_lines is None:
-            message_lines = list()
-        elif isinstance(message_lines, str):
-            message_lines = [message_lines]
-
-        self.set_message_lines(message_lines)
-        self.show()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, _type, _value, _traceback):
-        self.hide()
-
-    def append_message_lines(self, message_str_or_list: Union[List, str]):
+    def append_message_lines(self, message_str_or_list: Union[List, str], trim_to_visible_window=False):
         if not self.message_lines:
             self.message_lines = list()
 
-        new_message_lines = self.message_lines[:]
         if isinstance(message_str_or_list, str):
-            new_message_lines.append(message_str_or_list)
+            self.message_lines.append(message_str_or_list)
         elif isinstance(message_str_or_list, list):
-            new_message_lines.extend(message_str_or_list)
-        self.set_message_lines(new_message_lines)
+            self.message_lines.extend(message_str_or_list)
+
+        if trim_to_visible_window and len(self.message_lines) > self.content_height:
+            self.message_lines = self.message_lines[len(self.message_lines) - self.content_height:]
+
+        self.set_rows(self.message_lines, hilighted_row=-1)
+        self.render(force=True)
 
     def set_message_lines(self, new_message_lines):
-        orig_window_height = self.height
-        orig_window_width = self.width
-        orig_window_top = self.top
-        orig_window_left = self.left
+        self.set_rows(new_message_lines, hilighted_row=-1)
+        self.render(force=True)
 
-        self.message_lines = new_message_lines
-        self.num_rows = len(self.message_lines)
-        self.rows_max_width = 0
-
-        for message_line in self.message_lines:
-            if isinstance(message_line, str):
-                len_message_line = len(message_line)
-            elif isinstance(message_line, tuple):
-                len_message_line = len(message_line[0])
-            else:
-                len_message_line = 0
-
-            if len_message_line > self.rows_max_width:
-                self.rows_max_width = len(message_line)
-
-        self.height = min(self.stdscr_height, self.num_rows + 2)
-        self.width = min(self.stdscr_width, self.rows_max_width + 4)  # Leave a blank space at the left/right, and also account for the border
-        self.top = int((self.stdscr_height - self.height) // 2)
-        self.left = int((self.stdscr_width - self.width) // 2)
-
-        if self.window and (orig_window_height != self.height or orig_window_width != self.width or orig_window_top != self.top or orig_window_left != self.left):
-            if self.panel:
-                del self.panel
-                self.panel = None
-
-            del self.window
-            self.window = None
-
-        if not self.window:
-            self.window = curses.newwin(self.height, self.width, self.top, self.left)
-            self.window.keypad(True)
-
-        if not self.panel:
-            self.panel = curses.panel.new_panel(self.window)
-
-        self.content_top = 1  # Leave 1 row for the border
-        self.content_left = 2  # Left/right are indented by a space, and there is a border
-        self.content_height = self.height - 2  # Account for top/bottom border and header
-        self.content_width = self.width - 4  # Account for left/right border and a space on the left/right
-
-        self.needs_render = True
-        self.show()
-
-    def hide(self):
-        if self.panel:
-            self.panel.hide()
-            curses.panel.update_panels()
-            CURSES_STDSCR.refresh()
-
-    def show(self):
-        if self.panel:
-            self.panel.show()
-            self.render(force=True)
-            curses.panel.update_panels()
-            CURSES_STDSCR.refresh()
-
-    def render(self, force=False):
-        if not (force or self.needs_render):
-            return
-
-        self.window.erase()
-        self.window.border()
-
-        max_lines_to_render = min(len(self.message_lines), self.content_height)
-        for i in range(max_lines_to_render):
-            message_line = self.message_lines[i]
-
-            if isinstance(message_line, tuple):
-                raw_text = message_line[0]
-            elif isinstance(message_line, HorizontalLine):
-                text_colour = CursesColourBinding.COLOUR_WHITE_BLACK
-                self.window.hline(1 + i, 2, curses.ACS_HLINE, self.content_width, curses.color_pair(text_colour))
-                continue
-            else:
-                raw_text = message_line
-
-            if i == max_lines_to_render - 1 and max_lines_to_render < len(self.message_lines):
-                raw_text = '...'
-
-            if len(raw_text) > self.content_width:
-                raw_text = raw_text[:self.content_width - 4] + u'...'
-
-            if type(message_line) is tuple:
-                self.window.addstr(1 + i, 2, raw_text, curses.color_pair(message_line[1]))
-            else:
-                # LOGGER.info('ROYDEBUG: raw_text="{}"'.format(raw_text))
-                self.window.addstr(1 + i, 2, raw_text, curses.color_pair(CursesColourBinding.COLOUR_WHITE_BLACK))
-
-        self.needs_render = False
-
-    def run(self):
+    def run(self, stop_key_list: List[Keycodes] = None):
         self.show()
         self.window.timeout(-1)
 
