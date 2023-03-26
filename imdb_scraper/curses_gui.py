@@ -595,11 +595,16 @@ class MessagePanel(ScrollingPanel):
             self.message_lines = self.message_lines[len(self.message_lines) - self.content_height:]
 
         self.set_rows(self.message_lines, hilighted_row=-1)
-        self.render(force=True)
+        self.redraw_refresh()
 
     def set_message_lines(self, new_message_lines):
         self.set_rows(new_message_lines, hilighted_row=-1)
         self.render(force=True)
+
+    def redraw_refresh(self):
+        self.render(force=True)
+        curses.panel.update_panels()
+        CURSES_STDSCR.refresh()
 
     def run(self, stop_key_list: List[Keycodes] = None):
         self.show()

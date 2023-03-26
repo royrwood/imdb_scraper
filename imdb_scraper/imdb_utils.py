@@ -29,6 +29,7 @@ class IMDBInfo:
     imdb_rating: str = ''
     imdb_genres: List[str] = None
     imdb_plot: str = ''
+    is_dirty: bool = False
 
 
 def get_parse_imdb_search_results(video_name: str, year: str = None) -> List[IMDBInfo]:
@@ -49,7 +50,7 @@ def get_imdb_search_results(video_name: str, year: str = None) -> str:
     if year:
         url += f'+{year}'
 
-    imdb_response = requests.get(url, headers=headers, timeout=(3.05, 27))
+    imdb_response = requests.get(url, headers=headers, timeout=(5.0, 25.0))
 
     if imdb_response.status_code != 200:
         raise Exception(f'HTTP {imdb_response.status_code} while fetching search results for {video_name}')
@@ -78,7 +79,7 @@ def get_imdb_tt_info(imdb_tt: str) -> str:
     imdb_tt = imdb_tt
     url = f'https://www.imdb.com/title/{imdb_tt}/'
 
-    imdb_response = requests.get(url, headers=headers, timeout=(3.05, 27))
+    imdb_response = requests.get(url, headers=headers, timeout=(5.0, 25.0))
     imdb_response_text = imdb_response.text
 
     # For testing, save a copy of the file
@@ -135,7 +136,7 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[1]/a/text()").get()
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[2]/a/text()").get()
 
-    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year)
+    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year, is_dirty=False)
 
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, str):
