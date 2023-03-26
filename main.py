@@ -529,16 +529,14 @@ class MyMenu(curses_gui.MainMenu):
 
         num_video_files = len(self.video_files)
         num_video_files_processed = 0
-        first_pass = True
 
         with curses_gui.MessagePanel(['Beginning processing of video files...'], height=0.25) as message_panel:
             for i, video_file in enumerate(self.video_files):
                 if video_file.imdb_tt:
                     continue
 
-                if first_pass is False:
+                if i > 0:
                     message_panel.append_message_lines(curses_gui.HorizontalLine())
-                first_pass = False
 
                 progress_message = f'Processing {video_file.scrubbed_file_name} [{i}/{num_video_files}]'
                 message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
