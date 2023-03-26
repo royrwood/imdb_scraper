@@ -109,7 +109,7 @@ class VideoFileEditor:
 
             if new_imdb_selected_detail_index == current_imdb_selected_detail_index:
                 self.set_video_file_to_currently_selected_imdb_detail_result()
-            elif not self.imdb_search_results[new_imdb_selected_detail_index].is_dirty:
+            elif self.imdb_search_results[new_imdb_selected_detail_index].details_fully_loaded:
                 self.imdb_search_results_selected_index = new_imdb_selected_detail_index
             else:
                 try:
@@ -225,7 +225,7 @@ class VideoFileEditor:
 
             self.display_lines.append(curses_gui.HorizontalLine())
 
-        if self.imdb_search_results_selected_index is not None and self.imdb_search_results[self.imdb_search_results_selected_index].is_dirty is False:
+        if self.imdb_search_results_selected_index is not None and self.imdb_search_results[self.imdb_search_results_selected_index].details_fully_loaded:
             imdb_info = self.imdb_search_results[self.imdb_search_results_selected_index]
 
             # self.imdb_detail_results_start_row = len(self.display_lines)

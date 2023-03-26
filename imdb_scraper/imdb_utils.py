@@ -29,7 +29,7 @@ class IMDBInfo:
     imdb_rating: str = ''
     imdb_genres: List[str] = None
     imdb_plot: str = ''
-    is_dirty: bool = False
+    details_fully_loaded: bool = False
 
 
 def get_parse_imdb_search_results(video_name: str, year: str = None) -> List[IMDBInfo]:
@@ -136,7 +136,7 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[1]/a/text()").get()
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[2]/a/text()").get()
 
-    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year, is_dirty=False)
+    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year, details_fully_loaded=True)
 
 
 def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, str):
