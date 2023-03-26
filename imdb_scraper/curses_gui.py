@@ -582,11 +582,13 @@ class MessagePanel(ScrollingPanel):
         else:
             self.message_lines = message_lines
 
-    def append_message_lines(self, message_str_or_list: Union[List, str], trim_to_visible_window=False):
+    def append_message_lines(self, message_str_or_list: Union[List, str, HorizontalLine], trim_to_visible_window=False):
         if not self.message_lines:
             self.message_lines = list()
 
         if isinstance(message_str_or_list, str):
+            self.message_lines.append(message_str_or_list)
+        elif isinstance(message_str_or_list, HorizontalLine):
             self.message_lines.append(message_str_or_list)
         elif isinstance(message_str_or_list, list):
             self.message_lines.extend(message_str_or_list)

@@ -73,13 +73,18 @@ def show_exception_details(exc_type, exc_value, exc_traceback):
         return
 
 class VideoFileEditor:
-    def __init__(self, video_file: imdb_utils.VideoFile, additional_commands: List[str] = None):
+    def __init__(self, video_file: imdb_utils.VideoFile, additional_commands: List[str] = None, imdb_search_results: List[imdb_utils.IMDBInfo] = None):
         self.video_file = video_file
         self.additional_commands = additional_commands
 
-        self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = list()
-        self.imdb_search_results_updated = False
-        self.imdb_search_results_selected_index = None
+        if imdb_search_results:
+            self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = imdb_search_results
+            self.imdb_search_results_selected_index = 0
+            self.imdb_search_results_updated = True
+        else:
+            self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = list()
+            self.imdb_search_results_selected_index = None
+            self.imdb_search_results_updated = False
 
         self.display_lines = list()
         self.additional_command_start_row = -1
@@ -256,7 +261,7 @@ class VideoFileEditor:
 
 def edit_individual_video_file(video_file: imdb_utils.VideoFile, auto_search: bool = False, additional_commands: List[str] = None, imdb_search_results: List[imdb_utils.IMDBInfo] = None):
     video_file.is_dirty = False
-    video_file_editor = VideoFileEditor(video_file, additional_commands)
+    video_file_editor = VideoFileEditor(video_file, additional_commands, imdb_search_results)
 
     if auto_search:
         video_file_editor.do_imdb_search_and_load_detail(video_file.scrubbed_file_name, video_file.scrubbed_file_year)
@@ -524,17 +529,21 @@ class MyMenu(curses_gui.MainMenu):
 
         num_video_files = len(self.video_files)
         num_video_files_processed = 0
+        first_pass = True
 
         with curses_gui.MessagePanel(['Beginning processing of video files...'], height=0.25) as message_panel:
             for i, video_file in enumerate(self.video_files):
                 if video_file.imdb_tt:
                     continue
 
+                if first_pass is False:
+                    message_panel.append_message_lines(curses_gui.HorizontalLine())
+                first_pass = False
+
                 progress_message = f'Processing {video_file.scrubbed_file_name} [{i}/{num_video_files}]'
                 message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
 
                 imdb_search_results: Optional[List[imdb_utils.IMDBInfo]] = None
-                imdb_details_results: Optional[List[imdb_utils.IMDBInfo]] = None
 
                 message_panel.append_message_lines(f'Searching IMDB for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
                 try:
