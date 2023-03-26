@@ -181,7 +181,7 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]] = None, select_grid_cells=False, inner_padding=0, show_immediately=True, hilighted_row_index=0, hilighted_col_index=0, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]] = None, select_grid_cells=False, inner_padding=0, show_immediately=True, hilighted_row_index=None, hilighted_col_index=None, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
@@ -209,8 +209,8 @@ class ScrollingPanel:
         self.header_row = None
         self.num_header_rows = 0
         self.top_visible_row_index = 0
-        self.hilighted_row_index = hilighted_row_index
-        self.hilighted_col_index = hilighted_col_index
+        self.hilighted_row_index = hilighted_row_index if hilighted_row_index is not None else 0
+        self.hilighted_col_index = hilighted_col_index if hilighted_col_index is not None else 0
         self.height = 0
         self.width = 0
         self.top = 0
@@ -291,7 +291,7 @@ class ScrollingPanel:
         # Since the row contents have changed, we need to recalculate the window geometry
         self.set_geometry()
 
-        if hilighted_row:
+        if hilighted_row is not None:
             self.set_hilighted_row(hilighted_row)
 
     def set_hilighted_row(self, new_hilighted_row, top_visible_row_index=None):
