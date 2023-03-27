@@ -71,43 +71,21 @@ class VideoFileEditor:
         self.video_file.is_dirty = True
 
     def load_imdb_search_info(self, file_name: str, file_year = ''):
-        self.imdb_search_results = list()
-
         dialog_msg = f'Fetching IMDB Search Info for "{file_name}"'
         imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)
-        if threaded_dialog_result.dialog_result is not None:
-            raise curses_gui.UserCancelException()
-
-        if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
-            exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
-            curses_gui.show_exception_details_dialog(exc_type, exc_value, exc_traceback)
-            raise curses_gui.AsyncThreadException()
-
-        self.imdb_search_results = threaded_dialog_result.selectable_thread.callable_result
-
-        if not self.imdb_search_results:
+        if not (imdb_search_results := curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)):
             with curses_gui.DialogBox(prompt=[f'No search results for "{file_name}"'], buttons_text=['OK']) as dialog_box:
                 dialog_box.run()
             return
+
+        self.imdb_search_results = imdb_search_results
 
     def load_imdb_detail_info(self, imdb_info_index: int):
         imdb_info = self.imdb_search_results[imdb_info_index]
 
         dialog_msg = f'Fetching IMDB Detail Info for "{imdb_info.imdb_name}"'
         imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_info.imdb_tt)
-        threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)
-        if threaded_dialog_result.dialog_result is not None:
-            raise curses_gui.UserCancelException()
-
-        if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
-            exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
-            curses_gui.show_exception_details_dialog(exc_type, exc_value, exc_traceback)
-            raise curses_gui.AsyncThreadException()
-
-        imdb_detail_result: imdb_utils.IMDBInfo = threaded_dialog_result.selectable_thread.callable_result
-
-        if not imdb_detail_result:
+        if not (imdb_detail_result := curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)):
             with curses_gui.DialogBox(prompt=[f'No detail results for "{imdb_info.imdb_name}"'], buttons_text=['OK']) as dialog_box:
                 dialog_box.run()
             return

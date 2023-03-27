@@ -933,7 +933,10 @@ def show_exception_details_dialog(exc_type, exc_value, exc_traceback):
         return
 
 
-def run_cancellable_thread(task: Callable, getch_function = None):
+def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: List = None):
+    if cancel_keys is None:
+        cancel_keys = [Keycodes.ESCAPE]
+
     task_thread = SelectableThread(task)
     task_thread.start()
 
@@ -947,7 +950,7 @@ def run_cancellable_thread(task: Callable, getch_function = None):
             for selector_key, event_mask in sel.select():
                 if getch_function and selector_key.data == 'STDIN':
                     key = getch_function()
-                    if key == Keycodes.ESCAPE:
+                    if key in cancel_keys:
                         raise UserCancelException()
     finally:
         sel.unregister(task_thread.read_pipe_fd)
@@ -963,27 +966,34 @@ def run_cancellable_thread(task: Callable, getch_function = None):
     return task_thread.callable_result
 
 
-def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedDialogResult:
-    task_thread = SelectableThread(task)
-    task_thread.start()
-
-    threaded_dialog_result = ThreadedDialogResult(dialog_result=None, selectable_thread=task_thread)
-
-    sel = selectors.DefaultSelector()
-    sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
-    sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
-
+def run_cancellable_thread_dialog(task: Callable, dialog_text: str):
     with DialogBox(prompt=dialog_text, buttons_text=['Cancel'], show_immediately=True) as dialog_box:
-        while task_thread.is_alive() and threaded_dialog_result.dialog_result is None:
-            for selector_key, event_mask in sel.select():
-                if selector_key.data == 'STDIN':
-                    threaded_dialog_result.dialog_result = dialog_box.run(single_key=True)
+        callable_result = run_cancellable_thread(task, dialog_box.window.getch, cancel_keys=[Keycodes.ESCAPE, Keycodes.RETURN])
 
-    sel.unregister(task_thread.read_pipe_fd)
-    sel.unregister(sys.stdin)
-    sel.close()
+    return callable_result
 
-    return threaded_dialog_result
+
+# def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedDialogResult:
+#     task_thread = SelectableThread(task)
+#     task_thread.start()
+#
+#     threaded_dialog_result = ThreadedDialogResult(dialog_result=None, selectable_thread=task_thread)
+#
+#     sel = selectors.DefaultSelector()
+#     sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
+#     sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
+#
+#     with DialogBox(prompt=dialog_text, buttons_text=['Cancel'], show_immediately=True) as dialog_box:
+#         while task_thread.is_alive() and threaded_dialog_result.dialog_result is None:
+#             for selector_key, event_mask in sel.select():
+#                 if selector_key.data == 'STDIN':
+#                     threaded_dialog_result.dialog_result = dialog_box.run(single_key=True)
+#
+#     sel.unregister(task_thread.read_pipe_fd)
+#     sel.unregister(sys.stdin)
+#     sel.close()
+#
+#     return threaded_dialog_result
 
 
 class MainMenu(ScrollingPanel):
