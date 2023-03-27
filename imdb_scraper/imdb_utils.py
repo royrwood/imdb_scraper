@@ -1,7 +1,7 @@
 import dataclasses
 import os
 import re
-from typing import List
+from typing import List, Text, Tuple
 
 import parsel
 import requests
@@ -9,36 +9,35 @@ import requests
 
 @dataclasses.dataclass
 class VideoFile:
-    file_path: str = ''
-    scrubbed_file_name: str = ''
-    scrubbed_file_year: str = ''
-    imdb_tt: str = ''
-    imdb_name: str = ''
-    imdb_year: str = ''
-    imdb_rating: str = ''
-    imdb_genres: List[str] = None
-    imdb_plot: str = None
+    file_path: Text = ''
+    scrubbed_file_name: Text = ''
+    scrubbed_file_year: Text = ''
+    imdb_tt: Text = ''
+    imdb_name: Text = ''
+    imdb_year: Text = ''
+    imdb_rating: Text = ''
+    imdb_genres: List[Text] = None
+    imdb_plot: Text = None
     is_dirty: bool = False
 
 
 @dataclasses.dataclass
 class IMDBInfo:
-    imdb_tt: str = ''
-    imdb_name: str = ''
-    imdb_year: str = ''
-    imdb_rating: str = ''
-    imdb_genres: List[str] = None
-    imdb_plot: str = ''
-    details_fully_loaded: bool = False
+    imdb_tt: Text = ''
+    imdb_name: Text = ''
+    imdb_year: Text = ''
+    imdb_rating: Text = ''
+    imdb_genres: List[Text] = None
+    imdb_plot: Text = ''
 
 
-def get_parse_imdb_search_results(video_name: str, year: str = None) -> List[IMDBInfo]:
+def get_parse_imdb_search_results(video_name: Text, year: Text = None) -> List[IMDBInfo]:
     imdb_response_text = get_imdb_search_results(video_name, year)
 
     return parse_imdb_search_results(imdb_response_text)
 
 
-def get_imdb_search_results(video_name: str, year: str = None) -> str:
+def get_imdb_search_results(video_name: Text, year: Text = None) -> Text:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
@@ -64,13 +63,13 @@ def get_imdb_search_results(video_name: str, year: str = None) -> str:
     return imdb_response_text
 
 
-def get_parse_imdb_tt_info(imdb_tt: str) -> IMDBInfo:
+def get_parse_imdb_tt_info(imdb_tt: Text) -> IMDBInfo:
     imdb_response_text = get_imdb_tt_info(imdb_tt)
 
     return parse_imdb_tt_results(imdb_response_text, imdb_tt)
 
 
-def get_imdb_tt_info(imdb_tt: str) -> str:
+def get_imdb_tt_info(imdb_tt: Text) -> Text:
     headers = {
         'Accept': 'application/json, text/plain, */*',
         'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
@@ -89,7 +88,7 @@ def get_imdb_tt_info(imdb_tt: str) -> str:
     return imdb_response_text
 
 
-def parse_imdb_search_results(imdb_response_text: str) -> List[IMDBInfo]:
+def parse_imdb_search_results(imdb_response_text: Text) -> List[IMDBInfo]:
     match_video_files = list()
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
     search_result_selectors = imdb_response_selector.xpath("//section[@data-testid='find-results-section-title']/div/ul/li")
@@ -109,16 +108,23 @@ def parse_imdb_search_results(imdb_response_text: str) -> List[IMDBInfo]:
     return match_video_files
 
 
-def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
+def parse_imdb_tt_results(imdb_response_text: Text, imdb_tt: Text) -> IMDBInfo:
     imdb_response_selector = parsel.Selector(text=imdb_response_text)
+
     imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero-title-block__title']/text()").get()
     if not imdb_name:
         imdb_name = imdb_response_selector.xpath("//h1[@data-testid='hero__pageTitle']/span/text()").get()
     if not imdb_name:
         imdb_name = ''
+
     imdb_rating = imdb_response_selector.xpath("//div[@data-testid='hero-rating-bar__aggregate-rating__score']/span/text()").get() or ''
+    if not re.search(r'\d\.\d', imdb_rating):
+        imdb_rating = ''
+
     imdb_genres = imdb_response_selector.xpath("//div[@data-testid='genres']/div/a/span/text()").getall()
+
     imdb_plot = imdb_response_selector.xpath("//span[@data-testid='plot-xl']/text()").get() or ''
+
     imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]//li/a/text()").get()
     if not imdb_year:
         imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li//a/text()").get()
@@ -126,9 +132,6 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
         imdb_year = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/ul/li[1]/a/text()").get()
     if not imdb_year:
         imdb_year = ''
-    if not re.search(r'\d\.\d', imdb_rating):
-        imdb_rating = ''
-
     imdb_year = imdb_year[:4]
     if not imdb_year.isdigit():
         imdb_year = ''
@@ -136,10 +139,10 @@ def parse_imdb_tt_results(imdb_response_text: str, imdb_tt: str) -> IMDBInfo:
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[1]/a/text()").get()
     # foo = imdb_response_selector.xpath("/html/body/div[2]/main/div/section[1]/section/div[3]/section/section/div[2]/div[1]/div/ul/li[2]/a/text()").get()
 
-    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year, details_fully_loaded=True)
+    return IMDBInfo(imdb_tt=imdb_tt, imdb_rating=imdb_rating, imdb_genres=imdb_genres, imdb_name=imdb_name, imdb_plot=imdb_plot, imdb_year=imdb_year)
 
 
-def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str, str):
+def scrub_video_file_name(file_name: Text, filename_metadata_tokens: Text) -> Tuple[Text, Text]:
     year = ''
 
     match = re.match(r'((.*)\((\d{4})\))', file_name)
@@ -171,7 +174,7 @@ def scrub_video_file_name(file_name: str, filename_metadata_tokens: str) -> (str
     return scrubbed_file_name, year
 
 
-def scan_folder(folder_path: str, ignore_extensions: str, filename_metadata_tokens: str) -> List[VideoFile]:
+def scan_folder(folder_path: Text, ignore_extensions: Text, filename_metadata_tokens: Text) -> List[VideoFile]:
     ignore_extensions_list = [ext.lower().strip() for ext in ignore_extensions.split(',')]
 
     video_files = list()

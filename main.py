@@ -6,71 +6,13 @@ import functools
 import logging
 import json
 import math
-import selectors
-import sys
 import textwrap
-import traceback
-import tty
-import termios
-from typing import List, Optional, Callable
+from typing import List, Optional
 
 import imdb_scraper.imdb_utils
 from imdb_scraper import curses_gui
 from imdb_scraper import imdb_utils
 
-
-class UserCancelException(Exception):
-    pass
-
-
-class AsyncThreadException(Exception):
-    pass
-
-
-def run_cancellable_thread(task: Callable, getch_function = None):
-    task_thread = curses_gui.SelectableThread(task)
-    task_thread.start()
-
-    sel = selectors.DefaultSelector()
-    sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
-    if getch_function:
-        sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
-
-    while task_thread.is_alive():
-        for selector_key, event_mask in sel.select():
-            if getch_function and selector_key.data == 'STDIN':
-                key = getch_function()
-                if key == curses_gui.Keycodes.ESCAPE:
-                    raise UserCancelException()
-
-    sel.unregister(task_thread.read_pipe_fd)
-    if getch_function:
-        sel.unregister(sys.stdin)
-    sel.close()
-
-    if task_thread.callable_exception_info_tuple:
-        exc_type, exc_value, exc_traceback = task_thread.callable_exception_info_tuple
-        show_exception_details(exc_type, exc_value, exc_traceback)
-        raise AsyncThreadException()
-
-    return task_thread.callable_result
-
-
-
-def show_exception_details(exc_type, exc_value, exc_traceback):
-    message_lines = [f'Caught an exception: {exc_value}']
-    exception_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
-    for exception_line in exception_lines:
-        for line in exception_line.split('\n'):
-            if line.strip():
-                message_lines.append(line)
-
-    for line in message_lines:
-        logging.error(line)
-
-    with curses_gui.MessagePanel(message_lines) as message_panel:
-        message_panel.run()
-        return
 
 class VideoFileEditor:
     def __init__(self, video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo] = None):
@@ -98,22 +40,24 @@ class VideoFileEditor:
             ask_for_name = bool(row_index == 1)
             try:
                 self.do_imdb_search_and_load_detail(self.video_file.scrubbed_file_name, self.video_file.scrubbed_file_year, ask_for_name=ask_for_name)
-            except UserCancelException:
+            except curses_gui.UserCancelException:
                 logging.info('User cancelled IMDB search/detail fetch')
 
         elif self.imdb_search_results and self.imdb_search_results_start_row <= row_index < self.imdb_search_results_end_row:
             current_imdb_selected_detail_index = self.imdb_search_results_selected_index
             new_imdb_selected_detail_index = row_index - self.imdb_search_results_start_row
+            new_imdb_search_result = self.imdb_search_results[new_imdb_selected_detail_index]
+            new_imdb_search_result_is_loaded = new_imdb_search_result.imdb_year or new_imdb_search_result.imdb_rating or new_imdb_search_result.imdb_genres or new_imdb_search_result.imdb_plot
 
             if new_imdb_selected_detail_index == current_imdb_selected_detail_index:
                 self.set_video_file_to_currently_selected_imdb_detail_result()
-            elif self.imdb_search_results[new_imdb_selected_detail_index].details_fully_loaded:
+            elif new_imdb_search_result_is_loaded:
                 self.imdb_search_results_selected_index = new_imdb_selected_detail_index
             else:
                 try:
                     self.load_imdb_detail_info(new_imdb_selected_detail_index)
                     self.imdb_search_results_selected_index = new_imdb_selected_detail_index
-                except UserCancelException:
+                except curses_gui.UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
     def set_video_file_to_currently_selected_imdb_detail_result(self):
@@ -133,12 +77,12 @@ class VideoFileEditor:
         imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
         threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)
         if threaded_dialog_result.dialog_result is not None:
-            raise UserCancelException()
+            raise curses_gui.UserCancelException()
 
         if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
             exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
-            show_exception_details(exc_type, exc_value, exc_traceback)
-            raise AsyncThreadException()
+            curses_gui.show_exception_details_dialog(exc_type, exc_value, exc_traceback)
+            raise curses_gui.AsyncThreadException()
 
         self.imdb_search_results = threaded_dialog_result.selectable_thread.callable_result
 
@@ -154,12 +98,12 @@ class VideoFileEditor:
         imdb_details_task = functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_info.imdb_tt)
         threaded_dialog_result = curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)
         if threaded_dialog_result.dialog_result is not None:
-            raise UserCancelException()
+            raise curses_gui.UserCancelException()
 
         if threaded_dialog_result.selectable_thread.callable_exception_info_tuple:
             exc_type, exc_value, exc_traceback = threaded_dialog_result.selectable_thread.callable_exception_info_tuple
-            show_exception_details(exc_type, exc_value, exc_traceback)
-            raise AsyncThreadException()
+            curses_gui.show_exception_details_dialog(exc_type, exc_value, exc_traceback)
+            raise curses_gui.AsyncThreadException()
 
         imdb_detail_result: imdb_utils.IMDBInfo = threaded_dialog_result.selectable_thread.callable_result
 
@@ -218,7 +162,7 @@ class VideoFileEditor:
 
             self.display_lines.append(curses_gui.HorizontalLine())
 
-        if self.imdb_search_results_selected_index is not None and self.imdb_search_results[self.imdb_search_results_selected_index].details_fully_loaded:
+        if self.imdb_search_results_selected_index is not None and self.imdb_search_results[self.imdb_search_results_selected_index].imdb_name:
             imdb_info = self.imdb_search_results[self.imdb_search_results_selected_index]
 
             # self.imdb_detail_results_start_row = len(self.display_lines)
@@ -261,7 +205,7 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, imdb_search_res
             run_result = video_panel.run()
 
             if run_result.key == curses_gui.Keycodes.ESCAPE:
-                raise UserCancelException()
+                raise curses_gui.UserCancelException()
             else:
                 video_file_editor.perform_edit_action(run_result.row_index)
 
@@ -430,7 +374,7 @@ class MyMenu(curses_gui.MainMenu):
                         edit_individual_video_file(selected_video_file)
                         if selected_video_file.is_dirty:
                             self.video_files_is_dirty = True
-                    except UserCancelException:
+                    except curses_gui.UserCancelException:
                         logging.info('User cancelled video file edit')
 
     def save_video_file_data(self):
@@ -503,26 +447,24 @@ class MyMenu(curses_gui.MainMenu):
                 dialog_box.run()
             return
 
-        num_video_files = len(self.video_files)
+        unprocessed_video_files = [video_file for video_file in self.video_files if video_file.imdb_tt is None]
+        num_video_files = len(unprocessed_video_files)
         num_video_files_processed = 0
 
         with curses_gui.MessagePanel(['Beginning processing of video files...'], height=0.25) as message_panel:
-            for i, video_file in enumerate(self.video_files):
-                if video_file.imdb_tt:
-                    continue
-
+            for i, video_file in enumerate(unprocessed_video_files):
                 progress_message = f'Processing {video_file.scrubbed_file_name} [{i}/{num_video_files}]'
                 message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
 
                 try:
                     message_panel.append_message_lines(f'Searching IMDB for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
-                    imdb_search_results = run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.scrubbed_file_year), getch_function=message_panel.window.getch)
-                    if imdb_search_results:
-                        message_panel.append_message_lines(f'Found IMDB {len(imdb_search_results)} results for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
+                    imdb_search_results = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.scrubbed_file_year), getch_function=message_panel.window.getch)
+                    message_panel.append_message_lines(f'Found IMDB {len(imdb_search_results)} results for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
 
+                    if imdb_search_results and imdb_search_results[0].imdb_tt:
                         imdb_tt = imdb_search_results[0].imdb_tt
                         message_panel.append_message_lines(f'Fetching IMDB details for {imdb_tt} [{i}/{num_video_files}]', trim_to_visible_window=True)
-                        imdb_search_results[0] = run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt), getch_function=message_panel.window.getch)
+                        imdb_search_results[0] = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt), getch_function=message_panel.window.getch)
                         message_panel.append_message_lines(f'Fetched IMDB details for {imdb_tt} [{i}/{num_video_files}]', trim_to_visible_window=True)
 
                     edit_individual_video_file(video_file, imdb_search_results=imdb_search_results)
@@ -531,7 +473,7 @@ class MyMenu(curses_gui.MainMenu):
 
                     num_video_files_processed += 1
 
-                except UserCancelException:
+                except curses_gui.UserCancelException:
                     with curses_gui.DialogBox(prompt=['Continue processing or Cancel?'], buttons_text=['Continue', 'Cancel']) as dialog_box:
                         if dialog_box.run() == 'Cancel':
                             break

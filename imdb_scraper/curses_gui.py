@@ -60,6 +60,13 @@ class CursesColourBinding(IntEnum):
     COLOUR_BLACK_RED = 6
 
 
+class UserCancelException(Exception):
+    pass
+
+class AsyncThreadException(Exception):
+    pass
+
+
 class CursesStdscrType:
     """A bogus class used to define behaviour of CURSES_STDSCR so Pycharm linter will stop complaining!
     Actual type is weird: type(stdscr) = <type '_curses.curses window'>
@@ -908,6 +915,52 @@ class DialogBox:
 
             if single_key or result is not None:
                 return result
+
+
+def show_exception_details_dialog(exc_type, exc_value, exc_traceback):
+    message_lines = [f'Caught an exception: {exc_value}']
+    exception_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+    for exception_line in exception_lines:
+        for line in exception_line.split('\n'):
+            if line.strip():
+                message_lines.append(line)
+
+    for line in message_lines:
+        logging.error(line)
+
+    with MessagePanel(message_lines) as message_panel:
+        message_panel.run()
+        return
+
+
+def run_cancellable_thread(task: Callable, getch_function = None):
+    task_thread = SelectableThread(task)
+    task_thread.start()
+
+    sel = selectors.DefaultSelector()
+    sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
+    if getch_function:
+        sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
+
+    try:
+        while task_thread.is_alive():
+            for selector_key, event_mask in sel.select():
+                if getch_function and selector_key.data == 'STDIN':
+                    key = getch_function()
+                    if key == Keycodes.ESCAPE:
+                        raise UserCancelException()
+    finally:
+        sel.unregister(task_thread.read_pipe_fd)
+        if getch_function:
+            sel.unregister(sys.stdin)
+        sel.close()
+
+    if task_thread.callable_exception_info_tuple:
+        exc_type, exc_value, exc_traceback = task_thread.callable_exception_info_tuple
+        show_exception_details_dialog(exc_type, exc_value, exc_traceback)
+        raise AsyncThreadException()
+
+    return task_thread.callable_result
 
 
 def run_cancellable_thread_dialog(task: Callable, dialog_text: str) -> ThreadedDialogResult:
