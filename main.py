@@ -19,19 +19,19 @@ class VideoFileEditor:
         self.video_file = video_file
         self.display_lines = list()
 
+        self.imdb_search_results_start_row = 4
+        self.imdb_search_results_end_row = -1
+        self.video_info_json_start_row = -1
+        self.video_info_json_end_row = -1
+
         if imdb_search_results:
             self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = imdb_search_results
             self.imdb_search_results_selected_index = 0
-            self.hilighted_row = 3
+            self.hilighted_row = self.imdb_search_results_start_row
         else:
             self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = list()
             self.imdb_search_results_selected_index = None
             self.hilighted_row = None
-
-        self.imdb_search_results_start_row = -1
-        self.imdb_search_results_end_row = -1
-        self.video_info_json_start_row = -1
-        self.video_info_json_end_row = -1
 
     def perform_edit_action(self, row_index: int):
         self.hilighted_row = None
@@ -42,6 +42,21 @@ class VideoFileEditor:
                 self.do_imdb_search_and_load_detail(self.video_file.scrubbed_file_name, self.video_file.scrubbed_file_year, ask_for_name=ask_for_name)
             except curses_gui.UserCancelException:
                 logging.info('User cancelled IMDB search/detail fetch')
+
+        elif row_index == 2:
+            video_json = {
+                'file_path': self.video_file.file_path,
+                'scrubbed_file_name': self.video_file.scrubbed_file_name,
+                'scrubbed_file_year': self.video_file.scrubbed_file_year,
+                'imdb_tt': self.video_file.imdb_tt,
+                'imdb_name': self.video_file.imdb_name,
+                'imdb_year': self.video_file.imdb_year,
+                'imdb_rating': self.video_file.imdb_rating,
+                'imdb_genres': self.video_file.imdb_genres,
+                'imdb_plot': [self.video_file.imdb_plot],
+            }
+            video_json = curses_gui.tui_edit_json(video_json)
+            pass
 
         elif self.imdb_search_results and self.imdb_search_results_start_row <= row_index < self.imdb_search_results_end_row:
             current_imdb_selected_detail_index = self.imdb_search_results_selected_index
@@ -76,9 +91,8 @@ class VideoFileEditor:
         if not (imdb_search_results := curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)):
             with curses_gui.DialogBox(prompt=[f'No search results for "{file_name}"'], buttons_text=['OK']) as dialog_box:
                 dialog_box.run()
-            return
-
-        self.imdb_search_results = imdb_search_results
+        else:
+            self.imdb_search_results = imdb_search_results
 
     def load_imdb_detail_info(self, imdb_info_index: int):
         imdb_info = self.imdb_search_results[imdb_info_index]
@@ -88,9 +102,8 @@ class VideoFileEditor:
         if not (imdb_detail_result := curses_gui.run_cancellable_thread_dialog(imdb_details_task, dialog_msg)):
             with curses_gui.DialogBox(prompt=[f'No detail results for "{imdb_info.imdb_name}"'], buttons_text=['OK']) as dialog_box:
                 dialog_box.run()
-            return
-
-        self.imdb_search_results[imdb_info_index] = imdb_detail_result
+        else:
+            self.imdb_search_results[imdb_info_index] = imdb_detail_result
 
     def do_imdb_search_and_load_detail(self, file_name: str, file_year ='', ask_for_name = False):
         if ask_for_name:
@@ -103,10 +116,11 @@ class VideoFileEditor:
                 return
 
         self.load_imdb_search_info(file_name, file_year)
+
         if self.imdb_search_results:
             self.load_imdb_detail_info(0)
             self.imdb_search_results_selected_index = 0
-            self.hilighted_row = 3
+            self.hilighted_row = self.imdb_search_results_start_row
 
     def setup_display_lines(self, panel_width: int, panel_height: int) -> List:
         self.display_lines = list()
@@ -117,6 +131,7 @@ class VideoFileEditor:
             self.display_lines.append(f'Search IMDB for "{self.video_file.scrubbed_file_name}"')
 
         self.display_lines.append(f'Search IMDB for other target')
+        self.display_lines.append(f'Edit video record')
 
         self.display_lines.append(curses_gui.HorizontalLine())
 
