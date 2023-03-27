@@ -188,7 +188,7 @@ class ScrollingPanel:
        An example with multiple columns and custom width and custom colour:
            my_panel = ScrollingPanel(items=['A simple str line of text', u'A unicode line of text', Row(columns=[Column('Column 1'), Column('Column 2', CursesColourBinding.COLOUR_RED_BLACK, 20)]])
     """
-    def __init__(self, rows=None, top=None, left=None, width=None, height=None, draw_border=True, header_row: Union[str, Column, Row, List[str], List[Column]] = None, select_grid_cells=False, inner_padding=0, show_immediately=True, hilighted_row_index=None, hilighted_col_index=None, debug_name=None):
+    def __init__(self, rows=None, top=None, left=None, width=None, height=None, max_width=None, draw_border=True, header_row: Union[str, Column, Row, List] = None, select_grid_cells=False, inner_padding=0, show_immediately=True, hilighted_row_index=None, hilighted_col_index=None, debug_name=None):
         self.draw_border = draw_border
 
         self.debug_name = debug_name
@@ -206,6 +206,7 @@ class ScrollingPanel:
         self.initial_left = left
         self.initial_height = height  # height >= 1 is a height in rows; height < 0 is indented from fullscreen height; 0.0 < height < 1.0 is fraction of fullscreen height
         self.initial_width = width  # width >= 1 is a width in characters; width < 0 is indented from fullscreen width; 0.0 < width < 1.0 is fraction of fullscreen width
+        self.max_width = max_width
 
         self.needs_render = False
         self.rows = None
@@ -348,6 +349,9 @@ class ScrollingPanel:
             self.width = self.stdscr_width + 2 * width  # Since width < 0, the "+ 2*width" is really subtracting from the stdscr_width!
         else:
             self.width = width
+
+        if self.max_width and self.width > self.max_width:
+            self.width = self.max_width
 
         if top is None:
             self.top = int((self.stdscr_height - self.height) // 2)
@@ -1108,7 +1112,7 @@ def tui_edit_text_item(tui_text_item: TUITextItem, edit_prompt: Text = '') -> Tu
         else:
             return None, False
 
-def tui_edit_list_of_items(tui_list_item: TUIListItem) -> Tuple[Optional[int], bool]:
+def tui_edit_list_of_items(tui_list_item: TUIListItem, max_width=None) -> Tuple[Optional[int], bool]:
     def setup_display_rows(items_list):
         display_list = list()
         for tui_item in items_list:
@@ -1126,7 +1130,7 @@ def tui_edit_list_of_items(tui_list_item: TUIListItem) -> Tuple[Optional[int], b
     data_changed_final = False
     display_rows = setup_display_rows(tui_list_item.items_list)
 
-    with ScrollingPanel(rows=display_rows) as scrolling_panel:
+    with ScrollingPanel(rows=display_rows, max_width=max_width) as scrolling_panel:
         while True:
             # Wait for the user to do something
             run_result = scrolling_panel.run(stop_key_list = [Keycodes.ESCAPE, Keycodes.RETURN, Keycodes.BACKSPACE, Keycodes.DELETE])
@@ -1155,15 +1159,15 @@ def tui_edit_list_of_items(tui_list_item: TUIListItem) -> Tuple[Optional[int], b
                 display_rows = setup_display_rows(tui_list_item.items_list)
                 scrolling_panel.set_rows(display_rows, run_result.row_index)
 
-def tui_edit_dict_item(tui_dict_item: TUIDictItem) -> Tuple[Optional[int], bool]:
+def tui_edit_dict_item(tui_dict_item: TUIDictItem, max_width=None) -> Tuple[Optional[int], bool]:
     # Set up a list of TUILabelItem objects and then use tui_edit_list_of_items to edit it
     tui_labeled_items_list = [TUILabelItem(key, value) for key, value in tui_dict_item.items_dict.items()]
     tui_list_item = TUIListItem(tui_labeled_items_list)
-    return_code, data_changed = tui_edit_list_of_items(tui_list_item)
+    return_code, data_changed = tui_edit_list_of_items(tui_list_item, max_width=max_width)
 
     return return_code, data_changed
 
-def tui_edit_single_item(edit_item: TUIEditableItem, edit_prompt: Text = '') -> Tuple[Optional[int], bool]:
+def tui_edit_single_item(edit_item: TUIEditableItem, edit_prompt: Text = '', max_width=None) -> Tuple[Optional[int], bool]:
     if isinstance(edit_item, TUILabelItem):
         return tui_edit_single_item(edit_item.item, edit_prompt=f'{edit_item.label}: ')
     if isinstance(edit_item, TUITextItem):
@@ -1177,11 +1181,11 @@ def tui_edit_single_item(edit_item: TUIEditableItem, edit_prompt: Text = '') -> 
         return tui_edit_list_of_items(edit_item)
     elif isinstance(edit_item, TUIDictItem):
         # Edit the dict of items
-        return tui_edit_dict_item(edit_item)
+        return tui_edit_dict_item(edit_item, max_width=max_width)
     else:
         return None, False
 
-def tui_edit_json(json_obj):
+def tui_edit_json(json_obj, max_width=None):
     def convert_json_item_to_tui(json_item):
         if isinstance(json_item, tuple):
             return TUITextChoiceItem(str(json_item[0]), [str(choice) for choice in json_item[1]])
@@ -1211,7 +1215,7 @@ def tui_edit_json(json_obj):
 
     # Convert a JSON dict/list into TUI objects, edit them, then return the final JSON
     tui_edit_obj = convert_json_item_to_tui(json_obj)
-    tui_edit_single_item(tui_edit_obj)
+    tui_edit_single_item(tui_edit_obj, max_width=max_width)
     final_json = convert_tui_item_to_json(tui_edit_obj)
 
     return final_json

@@ -53,9 +53,9 @@ class VideoFileEditor:
                 'imdb_year': self.video_file.imdb_year,
                 'imdb_rating': self.video_file.imdb_rating,
                 'imdb_genres': self.video_file.imdb_genres,
-                'imdb_plot': [self.video_file.imdb_plot],
+                'imdb_plot': self.video_file.imdb_plot,
             }
-            video_json = curses_gui.tui_edit_json(video_json)
+            video_json = curses_gui.tui_edit_json(video_json, max_width=128)
             pass
 
         elif self.imdb_search_results and self.imdb_search_results_start_row <= row_index < self.imdb_search_results_end_row:
