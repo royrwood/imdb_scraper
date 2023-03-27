@@ -933,7 +933,7 @@ def show_exception_details_dialog(exc_type, exc_value, exc_traceback):
         return
 
 
-def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: List = None):
+def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: List = None, show_exception_dialog=True):
     if cancel_keys is None:
         cancel_keys = [Keycodes.ESCAPE]
 
@@ -959,8 +959,9 @@ def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: L
         sel.close()
 
     if task_thread.callable_exception_info_tuple:
-        exc_type, exc_value, exc_traceback = task_thread.callable_exception_info_tuple
-        show_exception_details_dialog(exc_type, exc_value, exc_traceback)
+        if show_exception_dialog:
+            exc_type, exc_value, exc_traceback = task_thread.callable_exception_info_tuple
+            show_exception_details_dialog(exc_type, exc_value, exc_traceback)
         raise AsyncThreadException()
 
     return task_thread.callable_result
@@ -968,7 +969,7 @@ def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: L
 
 def run_cancellable_thread_dialog(task: Callable, dialog_text: str):
     with DialogBox(prompt=dialog_text, buttons_text=['Cancel'], show_immediately=True) as dialog_box:
-        callable_result = run_cancellable_thread(task, dialog_box.window.getch, cancel_keys=[Keycodes.ESCAPE, Keycodes.RETURN])
+        callable_result = run_cancellable_thread(task, getch_function=dialog_box.window.getch, cancel_keys=[Keycodes.ESCAPE, Keycodes.RETURN])
 
     return callable_result
 

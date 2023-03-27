@@ -425,7 +425,7 @@ class MyMenu(curses_gui.MainMenu):
                 dialog_box.run()
             return
 
-        unprocessed_video_files = [video_file for video_file in self.video_files if video_file.imdb_tt is None]
+        unprocessed_video_files = [video_file for video_file in self.video_files if not video_file.imdb_tt]
         num_video_files = len(unprocessed_video_files)
         num_video_files_processed = 0
 
