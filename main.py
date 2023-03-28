@@ -58,7 +58,7 @@ class VideoFileEditor:
             new_imdb_search_result_is_loaded = new_imdb_search_result.imdb_year or new_imdb_search_result.imdb_rating or new_imdb_search_result.imdb_genres or new_imdb_search_result.imdb_plot
 
             if new_imdb_selected_detail_index == current_imdb_selected_detail_index:
-                self.set_video_file_to_currently_selected_imdb_detail_result()
+                self.update_video_file_to_currently_selected_imdb_detail_result()
             elif new_imdb_search_result_is_loaded:
                 self.imdb_search_results_selected_index = new_imdb_selected_detail_index
             else:
@@ -68,7 +68,7 @@ class VideoFileEditor:
                 except curses_gui.UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
-    def set_video_file_to_currently_selected_imdb_detail_result(self):
+    def update_video_file_to_currently_selected_imdb_detail_result(self):
         imdb_detail_result = self.imdb_search_results[self.imdb_search_results_selected_index]
         self.video_file.imdb_tt = imdb_detail_result.imdb_tt
         self.video_file.imdb_rating = imdb_detail_result.imdb_rating
