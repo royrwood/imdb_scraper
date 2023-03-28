@@ -44,19 +44,12 @@ class VideoFileEditor:
                 logging.info('User cancelled IMDB search/detail fetch')
 
         elif row_index == 2:
-            video_json = {
-                'file_path': self.video_file.file_path,
-                'scrubbed_file_name': self.video_file.scrubbed_file_name,
-                'scrubbed_file_year': self.video_file.scrubbed_file_year,
-                'imdb_tt': self.video_file.imdb_tt,
-                'imdb_name': self.video_file.imdb_name,
-                'imdb_year': self.video_file.imdb_year,
-                'imdb_rating': self.video_file.imdb_rating,
-                'imdb_genres': self.video_file.imdb_genres,
-                'imdb_plot': self.video_file.imdb_plot,
-            }
+            video_json = dataclasses.asdict(self.video_file)
+            if 'is_dirty' in video_json:
+                del video_json['is_dirty']
             video_json = curses_gui.tui_edit_json(video_json, max_width=128)
-            pass
+            self.video_file.__dict__.update(video_json)
+            self.video_file.is_dirty = True
 
         elif self.imdb_search_results and self.imdb_search_results_start_row <= row_index < self.imdb_search_results_end_row:
             current_imdb_selected_detail_index = self.imdb_search_results_selected_index
