@@ -56,7 +56,7 @@ class VideoFileEditor:
             new_imdb_search_result_is_loaded = new_imdb_search_result.imdb_year or new_imdb_search_result.imdb_rating or new_imdb_search_result.imdb_genres or new_imdb_search_result.imdb_plot
 
             if new_imdb_selected_detail_index == current_imdb_selected_detail_index:
-                self.update_video_file_to_currently_selected_imdb_detail_result()
+                self.update_video_file_to_imdb_info(self.imdb_search_results[self.imdb_search_results_selected_index])
             elif new_imdb_search_result_is_loaded:
                 self.imdb_search_results_selected_index = new_imdb_selected_detail_index
             else:
@@ -66,14 +66,13 @@ class VideoFileEditor:
                 except curses_gui.UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
-    def update_video_file_to_currently_selected_imdb_detail_result(self):
-        imdb_detail_result = self.imdb_search_results[self.imdb_search_results_selected_index]
-        self.video_file.imdb_tt = imdb_detail_result.imdb_tt
-        self.video_file.imdb_rating = imdb_detail_result.imdb_rating
-        self.video_file.imdb_name = imdb_detail_result.imdb_name
-        self.video_file.imdb_year = imdb_detail_result.imdb_year
-        self.video_file.imdb_genres = imdb_detail_result.imdb_genres
-        self.video_file.imdb_plot = imdb_detail_result.imdb_plot
+    def update_video_file_to_imdb_info(self, imdb_info: imdb_utils.IMDBInfo):
+        self.video_file.imdb_tt = imdb_info.imdb_tt
+        self.video_file.imdb_rating = imdb_info.imdb_rating
+        self.video_file.imdb_name = imdb_info.imdb_name
+        self.video_file.imdb_year = imdb_info.imdb_year
+        self.video_file.imdb_genres = imdb_info.imdb_genres
+        self.video_file.imdb_plot = imdb_info.imdb_plot
         self.video_file.is_dirty = True
 
     def load_imdb_search_info(self, file_name: str, file_year = ''):
