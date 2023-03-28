@@ -21,8 +21,6 @@ class VideoFileEditor:
 
         self.imdb_search_results_start_row = 4
         self.imdb_search_results_end_row = -1
-        self.video_info_json_start_row = -1
-        self.video_info_json_end_row = -1
 
         if imdb_search_results:
             self.imdb_search_results: List[Optional[imdb_utils.IMDBInfo]] = imdb_search_results
@@ -151,8 +149,6 @@ class VideoFileEditor:
         if self.imdb_search_results_selected_index is not None and self.imdb_search_results[self.imdb_search_results_selected_index].imdb_name:
             imdb_info = self.imdb_search_results[self.imdb_search_results_selected_index]
 
-            # self.imdb_detail_results_start_row = len(self.display_lines)
-
             self.display_lines.append(f'imdb_name:   {imdb_info.imdb_name}')
             self.display_lines.append(f'imdb_rating: {imdb_info.imdb_rating}')
             self.display_lines.append(f'imdb_year:   {imdb_info.imdb_year}')
@@ -166,14 +162,10 @@ class VideoFileEditor:
             for plot_line in plot_lines[1:]:
                 self.display_lines.append(f'             {plot_line}')
 
-            # self.imdb_detail_results_end_row = len(self.display_lines)
-
         else:
             json_str = json.dumps(dataclasses.asdict(self.video_file), indent=4, sort_keys=True)
             json_str_lines = json_str.splitlines()
-            self.video_info_json_start_row = len(self.display_lines)
             self.display_lines.extend(json_str_lines)
-            self.video_info_json_end_row = len(self.display_lines)
 
         return self.display_lines
 
