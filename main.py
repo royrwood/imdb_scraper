@@ -205,8 +205,8 @@ class MyMenu(curses_gui.MainMenu):
         self.menu_choices.append(('Scan Video Folder', self.scan_video_folder))
         self.menu_choices.append(('Update Video Info', self.update_all_video_file_data))
 
-        self.menu_choices.append((curses_gui.HorizontalLine(), None))
-        self.menu_choices.append(('test_message_panel', self.test_message_panel))
+        # self.menu_choices.append((curses_gui.HorizontalLine(), None))
+        # self.menu_choices.append(('test_message_panel', self.test_message_panel))
 
         # self.menu_choices.append((curses_gui.HorizontalLine(), None))
         # self.menu_choices.append(('test_scrolling_panel_grid_mode', self.test_scrolling_panel))
@@ -224,14 +224,14 @@ class MyMenu(curses_gui.MainMenu):
             return True
 
 
-    @staticmethod
-    def test_message_panel():
-        with curses_gui.MessagePanel(['This is a test'], height=0.5) as message_panel:
-            for i in range(100):
-                message_panel.append_message_lines(f'Line {i}', trim_to_visible_window=True)
-            message_panel.run()
-
-
+    # @staticmethod
+    # def test_message_panel():
+    #     with curses_gui.MessagePanel(['This is a test'], height=0.5) as message_panel:
+    #         for i in range(100):
+    #             message_panel.append_message_lines(f'Line {i}', trim_to_visible_window=True)
+    #         message_panel.run()
+    #
+    #
     # @staticmethod
     # def test_scrolling_panel_width_height():
     #     header_columns = list()

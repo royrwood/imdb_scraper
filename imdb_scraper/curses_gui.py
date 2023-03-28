@@ -944,6 +944,7 @@ def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: L
     task_thread = SelectableThread(task)
     task_thread.start()
 
+    # We are not currently reading from the thread, but we probably will need to support that eventually...
     sel = selectors.DefaultSelector()
     sel.register(task_thread.read_pipe_fd, selectors.EVENT_READ, 'PIPE')
     if getch_function:
