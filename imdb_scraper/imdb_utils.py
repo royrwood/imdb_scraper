@@ -174,7 +174,12 @@ def scrub_video_file_name(file_name: Text, filename_metadata_tokens: Text) -> Tu
     return scrubbed_file_name, year
 
 
-def scan_folder(folder_path: Text, ignore_extensions: Text, filename_metadata_tokens: Text) -> List[VideoFile]:
+def scan_folder(folder_path: Text, ignore_extensions: Text = None, filename_metadata_tokens: Text = None) -> List[VideoFile]:
+    if ignore_extensions is None:
+        ignore_extensions = 'png,jpg,nfo,srt'
+    if filename_metadata_tokens is None:
+        filename_metadata_tokens = '480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv'
+
     ignore_extensions_list = [ext.lower().strip() for ext in ignore_extensions.split(',')]
 
     video_files = list()
