@@ -404,7 +404,7 @@ class MyMenu(curses_gui.MainMenu):
         if video_folder_path is None:
             return
 
-        ignore_extensions = 'png,jpg,nfo'
+        ignore_extensions = 'png,jpg,nfo,srt'
         filename_metadata_tokens = '480p,720p,1080p,bluray,hevc,x265,x264,web,webrip,web-dl,repack,proper,extended,remastered,dvdrip,dvd,hdtv,xvid,hdrip,brrip,dvdscr,pdtv'
 
         self.video_files = imdb_utils.scan_folder(video_folder_path, ignore_extensions, filename_metadata_tokens)
