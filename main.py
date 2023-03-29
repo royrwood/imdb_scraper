@@ -418,6 +418,11 @@ class MyMenu(curses_gui.MainMenu):
         self.display_all_video_file_data()
 
     def update_all_video_file_data(self):
+        def progress_callback():
+            nonlocal progress_indicator
+            message_panel.set_last_line(progress_message + progress_indicator, trim_to_visible_window=True)
+            progress_indicator += '.'
+
         if not self.video_files:
             with curses_gui.DialogBox(prompt=['No video files to process'], buttons_text=['OK']) as dialog_box:
                 dialog_box.run()
@@ -427,20 +432,24 @@ class MyMenu(curses_gui.MainMenu):
         num_video_files = len(unprocessed_video_files)
         num_video_files_processed = 0
 
-        with curses_gui.MessagePanel(['Beginning processing of video files...'], height=0.25) as message_panel:
+        with curses_gui.MessagePanel(['Beginning processing of video files...'], height=0.25, width=0.25) as message_panel:
             for i, video_file in enumerate(unprocessed_video_files):
                 progress_message = f'Processing {video_file.scrubbed_file_name} [{i}/{num_video_files}]'
                 message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
 
                 try:
-                    message_panel.append_message_lines(f'Searching IMDB for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
-                    imdb_search_results = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.scrubbed_file_year), getch_function=message_panel.window.getch)
+                    progress_indicator = '.'
+                    progress_message = f'Searching IMDB for {video_file.scrubbed_file_name} [{i}/{num_video_files}]'
+                    message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
+                    imdb_search_results = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.scrubbed_file_year), getch_function=message_panel.window.getch, progress_callback=(progress_callback,0.25))
                     message_panel.append_message_lines(f'Found IMDB {len(imdb_search_results)} results for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
 
                     if imdb_search_results and imdb_search_results[0].imdb_tt:
                         imdb_tt = imdb_search_results[0].imdb_tt
-                        message_panel.append_message_lines(f'Fetching IMDB details for {imdb_tt} [{i}/{num_video_files}]', trim_to_visible_window=True)
-                        imdb_search_results[0] = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt), getch_function=message_panel.window.getch)
+                        progress_indicator = '.'
+                        progress_message = f'Fetching IMDB details for {imdb_tt} [{i}/{num_video_files}]'
+                        message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
+                        imdb_search_results[0] = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt), getch_function=message_panel.window.getch, progress_callback=(progress_callback,0.25))
                         message_panel.append_message_lines(f'Fetched IMDB details for {imdb_tt} [{i}/{num_video_files}]', trim_to_visible_window=True)
 
                     edit_individual_video_file(video_file, imdb_search_results=imdb_search_results)

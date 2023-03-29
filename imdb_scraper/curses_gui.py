@@ -610,9 +610,18 @@ class MessagePanel(ScrollingPanel):
         self.set_rows(self.message_lines, hilighted_row=-1)
         self.redraw_refresh()
 
-    def set_message_lines(self, new_message_lines):
+    def set_message_lines(self, new_message_lines, trim_to_visible_window):
+        if trim_to_visible_window and len(new_message_lines) > self.content_height:
+            new_message_lines = new_message_lines[len(self.message_lines) - self.content_height:]
+
         self.set_rows(new_message_lines, hilighted_row=-1)
+
         self.render(force=True)
+
+    def set_last_line(self, new_message_line, trim_to_visible_window=False):
+        if self.message_lines:
+            del self.message_lines[-1]
+        self.append_message_lines(new_message_line, trim_to_visible_window)
 
     def redraw_refresh(self):
         self.render(force=True)
@@ -937,7 +946,7 @@ def show_exception_details_dialog(exc_type, exc_value, exc_traceback):
         return
 
 
-def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: List = None, show_exception_dialog=True):
+def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: List = None, show_exception_dialog=True, progress_callback: Tuple[Callable,float] = None):
     if cancel_keys is None:
         cancel_keys = [Keycodes.ESCAPE]
 
@@ -950,13 +959,18 @@ def run_cancellable_thread(task: Callable, getch_function = None, cancel_keys: L
     if getch_function:
         sel.register(sys.stdin, selectors.EVENT_READ, 'STDIN')
 
+    timeout = progress_callback[1] if progress_callback else None
+    progress_callback_fn = progress_callback[0] if progress_callback else None
+
     try:
         while task_thread.is_alive():
-            for selector_key, event_mask in sel.select():
+            for selector_key, event_mask in sel.select(timeout):
                 if getch_function and selector_key.data == 'STDIN':
                     key = getch_function()
                     if key in cancel_keys:
                         raise UserCancelException()
+            if progress_callback_fn:
+                progress_callback_fn()
     finally:
         sel.unregister(task_thread.read_pipe_fd)
         if getch_function:
