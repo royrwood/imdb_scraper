@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from typing import List, Optional
+import argparse
 import dataclasses
 import functools
-import logging
 import json
+import logging
 import math
+import os
+import sys
 import textwrap
-from typing import List, Optional
 
-import imdb_scraper.imdb_utils
 from imdb_scraper import curses_gui
 from imdb_scraper import imdb_utils
+import imdb_scraper.imdb_utils
 
 
 class VideoFileEditor:
@@ -74,7 +77,7 @@ class VideoFileEditor:
                 except curses_gui.UserCancelException:
                     logging.info('User cancelled IMDB search/detail fetch')
 
-    def load_imdb_search_info(self, file_name: str, file_year = ''):
+    def load_imdb_search_info(self, file_name: str, file_year=''):
         dialog_msg = f'Fetching IMDB Search Info for "{file_name}"'
         imdb_search_task = functools.partial(imdb_utils.get_parse_imdb_search_results, file_name, file_year)
         if not (imdb_search_results := curses_gui.run_cancellable_thread_dialog(imdb_search_task, dialog_msg)):
@@ -94,7 +97,7 @@ class VideoFileEditor:
         else:
             self.imdb_search_results[imdb_info_index] = imdb_detail_result
 
-    def do_imdb_search_and_load_detail(self, file_name: str, file_year ='', ask_for_name = False):
+    def do_imdb_search_and_load_detail(self, file_name: str, file_year='', ask_for_name=False):
         if ask_for_name:
             file_year = None
 
@@ -167,6 +170,7 @@ class VideoFileEditor:
 
         return self.display_lines
 
+
 def edit_individual_video_file(video_file: imdb_utils.VideoFile, imdb_search_results: List[imdb_utils.IMDBInfo] = None):
     video_file.is_dirty = False
     video_file_editor = VideoFileEditor(video_file, imdb_search_results)
@@ -190,9 +194,10 @@ def edit_individual_video_file(video_file: imdb_utils.VideoFile, imdb_search_res
 
 
 class MyMenu(curses_gui.MainMenu):
-    def __init__(self):
+    def __init__(self, folder_path: str = '.'):
         super(MyMenu, self).__init__()
-        self.video_file_path: str = 'imdb_video_info.json'
+        self.video_folder_path = folder_path
+        self.video_file_path: str = os.path.join(self.video_folder_path, 'imdb_video_info.json')
         self.video_files: Optional[List[imdb_scraper.imdb_utils.VideoFile]] = None
         self.video_files_is_dirty: bool = False
         self.logger = logging.getLogger()
@@ -222,7 +227,6 @@ class MyMenu(curses_gui.MainMenu):
             return False
         else:
             return True
-
 
     # @staticmethod
     # def test_message_panel():
@@ -333,10 +337,10 @@ class MyMenu(curses_gui.MainMenu):
                         display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.imdb_name, video_file.imdb_year, f'{video_file.imdb_rating}', f'[{video_file.imdb_tt}]', video_file.file_path]))
                     else:
                         display_rows.append(curses_gui.Row([f'[{i:0{num_digits}d}]', video_file.scrubbed_file_name, video_file.scrubbed_file_year, '', '', video_file.file_path]))
-                hilighted_row_index = scrolling_panel.hilighted_row_index
+                hilited_row_index = scrolling_panel.hilighted_row_index
                 top_visible_row_index = scrolling_panel.top_visible_row_index
                 scrolling_panel.set_rows(display_rows)
-                scrolling_panel.set_hilighted_row(hilighted_row_index, top_visible_row_index)
+                scrolling_panel.set_hilighted_row(hilited_row_index, top_visible_row_index)
                 scrolling_panel.show()
 
                 run_result = scrolling_panel.run()
@@ -399,7 +403,7 @@ class MyMenu(curses_gui.MainMenu):
             dialog_box.run()
 
     def scan_video_folder(self):
-        with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value='/home/rrwood/Videos/Movies/') as input_panel:
+        with curses_gui.InputPanel(prompt='Enter path to folder: ', default_value=self.video_folder_path) as input_panel:
             video_folder_path = input_panel.run()
         if video_folder_path is None:
             return
@@ -441,7 +445,7 @@ class MyMenu(curses_gui.MainMenu):
                     progress_indicator = '.'
                     progress_message = f'Searching IMDB for {video_file.scrubbed_file_name} [{i}/{num_video_files}]'
                     message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
-                    imdb_search_results = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.scrubbed_file_year), getch_function=message_panel.window.getch, progress_callback=(progress_callback,0.25))
+                    imdb_search_results = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_search_results, video_file.scrubbed_file_name, video_file.scrubbed_file_year), getch_function=message_panel.window.getch, progress_callback=(progress_callback, 0.25))
                     message_panel.append_message_lines(f'Found IMDB {len(imdb_search_results)} results for {video_file.scrubbed_file_name} [{i}/{num_video_files}]', trim_to_visible_window=True)
 
                     if imdb_search_results and imdb_search_results[0].imdb_tt:
@@ -449,7 +453,7 @@ class MyMenu(curses_gui.MainMenu):
                         progress_indicator = '.'
                         progress_message = f'Fetching IMDB details for {imdb_tt} [{i}/{num_video_files}]'
                         message_panel.append_message_lines(progress_message, trim_to_visible_window=True)
-                        imdb_search_results[0] = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt), getch_function=message_panel.window.getch, progress_callback=(progress_callback,0.25))
+                        imdb_search_results[0] = curses_gui.run_cancellable_thread(functools.partial(imdb_utils.get_parse_imdb_tt_info, imdb_tt), getch_function=message_panel.window.getch, progress_callback=(progress_callback, 0.25))
                         message_panel.append_message_lines(f'Fetched IMDB details for {imdb_tt} [{i}/{num_video_files}]', trim_to_visible_window=True)
 
                     edit_individual_video_file(video_file, imdb_search_results=imdb_search_results)
@@ -469,11 +473,25 @@ class MyMenu(curses_gui.MainMenu):
             dialog_box.run()
 
 
+def main(argv):
+    if argv is None:
+        argv = sys.argv[1:]
+
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('folder_path', action='store', default='.', help='Path to folder to process')
+    # arg_parser.add_argument('--no-bcc', action='store_true', default=False, help='Do not bcc "dollaramaserveremails@binnj.com"')
+    args = arg_parser.parse_args(argv)
+
+    folder_path = args.folder_path
+
+    logging.basicConfig(filename='/tmp/imdb_scraper.log', format='%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
+
+    logging.info('Starting up with folder path %s', folder_path)
+    curses_gui.console_gui_main(MyMenu, folder_path)
+    logging.info('Ending.')
+
+
 # For Pycharm "Attach to Process" execute: sudo sysctl kernel.yama.ptrace_scope=0
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='/tmp/imdb_scraper.log', format='[%(process)d]:%(levelname)s:%(funcName)s:%(lineno)d: %(message)s', level=logging.INFO)
-
-    logging.info('Starting up...')
-    curses_gui.console_gui_main(MyMenu)
-    logging.info('Ending.')
+    main(sys.argv[1:])

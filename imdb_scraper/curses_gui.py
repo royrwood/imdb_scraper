@@ -1236,7 +1236,7 @@ def tui_edit_json(json_obj, max_width=None):
     return final_json
 
 
-def interactive_main(stdscr: CursesStdscrType, main_menu_cls: type) -> None:
+def interactive_main(stdscr: CursesStdscrType, main_menu_cls: type, *args) -> None:
     # LOGGER.info('type(stdscr) = %s', str(type(stdscr)))  # Weird: type(stdscr) = <type '_curses.curses window'>
 
     # Initialize all the curses stuff we need
@@ -1261,18 +1261,18 @@ def interactive_main(stdscr: CursesStdscrType, main_menu_cls: type) -> None:
 
     CURSES_STDSCR.clear()
 
-    main_menu = main_menu_cls()
+    main_menu = main_menu_cls(*args)
     main_menu.run_modally()
 
     # Calling hide() seems to trigger an error, so don't do it?
     # main_menu.hide()
 
 
-def console_gui_main(main_menu_cls: type) -> None:
+def console_gui_main(main_menu_cls: type, *args) -> None:
     # Set the ESCDELAY envar since curses does funky stuff with escape key sequences by default, but we want to get the escape key immediately
     # This has to happen BEFORE the call to curses.wrapper() below
     os.environ.setdefault('ESCDELAY', '25')
 
     # LOGGER.info('Begin interactive mode')
-    curses.wrapper(interactive_main, main_menu_cls)
+    curses.wrapper(interactive_main, main_menu_cls, *args)
     # LOGGER.info('End interactive mode')
